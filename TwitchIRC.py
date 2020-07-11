@@ -1,0 +1,325 @@
+"""
+This module contains the main class for Voltron Bot
+"""
+
+import socket
+import sys
+import time
+import re
+import signal
+import requests
+import json
+
+from twitch_oauth import twitch_login, save_oauth
+from common import get_broadcaster
+
+import config
+
+class TwitchIRC:
+	"""
+	The main class for the Twitch ChatBot.
+	This is the main thread and will manage all other threads.
+	"""
+	def __init__(self):
+		self._ts_print("Starting Voltron Bot")
+		self._ts_print("Press Ctrl-C to exit")
+		self.keep_listening = True
+
+		## Use these variables to detmine uptime for the bot
+		## as well as time the socket has been connected
+		self.start_time = time.time()
+		self.socket_time = time.time()
+
+		login_info = twitch_login()
+		if login_info:
+			save_oauth(
+				login_info[0], # oauth token
+				login_info[1], # refresh_token
+				login_info[2], # expires in
+				True # is broadcaster
+			)
+
+		self.broadcaster = get_broadcaster()
+
+		## Set the socket timeout to 1 second until we ensure an active
+		## connection with a successful PING/PONG
+		self.irc = socket.socket()
+		self.irc.settimeout(1)
+		self.connect()
+
+		## Last ping and pong times. Set these to 0 so a ping will be
+		## sent immediately after connecting
+		self._last_ping = 0
+		self._last_pong = 0
+
+		self.channel_map = {}
+		self.join_channels()
+
+		self._ts_print("Voltron bot is fully operational!")
+
+	def message_received(self, display_name, user_id, is_mod, is_broadcaster, message):
+		"""
+		Called whenever a PRIVMSG is received in twitch chat and successfully parsed
+
+		Args:
+			display_name (string): The display name of the sender
+			user_id (int): The twitch user ID of the sender
+			is_mod (bool): True if sender has moderator role
+			is_broadcaster (bool): True if sender is the broadcaster
+			message (string): The content of the message
+		"""
+		## Inherit and override
+		pass
+
+	def connect(self):
+		"""
+		Establishes a socket connection to Twitch IRC servers
+		Called when class TwitchIRC class is initialized or when the client disconnects
+		"""
+		self._ts_print("Connecting...", newline=False)
+		self.irc.connect(('irc.chat.twitch.tv', 6667))
+		self.irc.send("PASS oauth:{oauth}\r\n".format(oauth=self.broadcaster.oauth_tokens.token).encode())
+		self.irc.send("NICK {nick}\r\n".format(nick=self.broadcaster.user_name).encode())
+		self.irc.send("CAP REQ :twitch.tv/tags twitch.tv/commands\r\n".encode())
+
+		## Update the socket time as we just connected
+		self.socket_time = time.time()
+		self._ts_print("done", ts=False)
+
+	def reconnect(self):
+		"""
+		Terminates the current socket connection to the Twitch IRC servers and calls connect()
+		"""
+		self._ts_print("Reconnecting...")
+		self.irc.shutdown(socket.SHUT_RDWR)
+		self.irc.close()
+
+		self.irc = socket.socket()
+		self.irc.settimeout(1)
+
+		self.connect()
+		self.join_channels()
+
+	def join_channels(self):
+		"""
+		Joins the Twitch IRC channel of the broadcaster
+		"""
+		self._ts_print("Joining channel #{}...".format(self.broadcaster.user_name), newline=False)
+		self.irc.send("JOIN #{channel}\r\n".format(channel=self.broadcaster.user_name).encode())
+		self.channel_map[self.broadcaster.user_name] = int(self.broadcaster.twitch_user_id)
+		self._ts_print('done', ts=False)
+
+	def listen(self):
+		"""
+		Main loop. Listens for messages on the connected socket.
+		Calls _handle_response() when a message is received
+		"""
+		while self.keep_listening:
+			try:
+				resp = self.irc.recv(2040)
+				if resp:
+					self._handle_response(resp.decode())
+				else:
+					## Empty response means the connection is probably dead
+					## call reconnect() just to be sure
+					self._ts_print("Empty response... Attempting to reconnect")
+					self.reconnect()
+			except socket.timeout:
+				## If the connection times out make sure Twitch is still responsive
+				self._check_alive()
+			except socket.error as e:
+				## if self.keep_listening is False, we assume that we are shutting
+				## down the client and the connection is intentially closed
+				if self.keep_listening:
+					raise e
+
+	def send_message(self, message, channel, action=False):
+		"""
+		Sends a message in chat
+
+		Args:
+			message (string): The message to be sent
+			channel (string): The channel to send the message
+			action (bool): If True the message will be sent as an ACTION (/me)
+		"""
+
+		## Format message appropaitely if we are sending as an ACTION
+		if action:
+			message = '\001ACTION {message} \001'.format(message=message)
+		self.irc.send("PRIVMSG #{channel} :{message}\r\n".format(channel=channel, message=message).encode())
+
+	def _handle_response(self, resp):
+		## If Twitch pinged, respond with a pong and record a successful exchange
+		if re.search(r"^PING", resp):
+			self._ts_print("PING RECV")
+			self._last_ping = time.time()
+			self._pong()
+			return True
+
+		## If we got a pong, log the time and move on
+		if re.search(r"^(:tmi\.twitch\.tv )?PONG", resp):
+			self._ts_print("PONG RECV")
+			self._last_pong = time.time()
+			# Use default socket timeout since we know connection is alive
+			self.irc.settimeout(config.DEFAULT_SOCKET_TIMEOUT)
+			return True
+
+		## CHECK AND PARSE CHANNEL MESSAGES
+		privmsg_regex = (r'^@([^ ]+) :([^ ]+) PRIVMSG #([^ ]+) :([^\r\n]*)')
+		match = re.search(privmsg_regex, resp)
+		if match:
+			## Data containing badges, emote sets, etc
+			twitch_shit = match.group(1)
+			user_info = match.group(2)
+			channel = match.group(3)
+			message = match.group(4)
+
+			broadcaster_id = self.channel_map[channel]
+
+			## Parse the display_name out of twitch_shit
+			display_match = re.search(
+				r'display-name=([^; ]*)',
+				twitch_shit
+			)
+			display_name = display_match.group(1) if display_match else "Unknown"
+
+			## Parse Twitch user ID out of twitch_shit
+			id_match = re.search(
+				r'user-id=([0-9]+)',
+				twitch_shit
+			)
+			user_id = id_match.group(1) if id_match else False
+
+			## Determine if the sender was a mod
+			mod_match = re.search(
+				r'user-type=mod',
+				twitch_shit
+			)
+			is_mod = True if mod_match else False
+
+			## See if the sender is the same as the logged in broadcaster
+			is_broadcaster = int(broadcaster_id) == int(user_id)
+
+			## See if the broadcaster or a mod sent !ping to check the status
+			## of the bot
+			test_match = re.search(r'^!ping', message)
+			if test_match and (is_broadcaster or is_mod):
+				t_str = self._format_seconds(time.time() - self.start_time)
+				s_str = self._format_seconds(time.time() - self.socket_time)
+				msg = "has been watching you for %s (%s on this socket)" % (t_str, s_str)
+				self.send_message(msg, channel, action=True)
+
+			## Remove bullshit ASCI characters that will piss off the database
+			escapes = ''.join([chr(char) for char in range(1, 32)])
+			table = {}
+			for char in range(1, 32):
+				table[chr(char)] = None
+			m = message.translate(table)
+
+			## Call message_received with all of the data that we parseed out
+			## out of the message
+			self.message_received(
+				display_name,
+				user_id,
+				is_mod,
+				is_broadcaster,
+				m
+			)
+			return True
+
+		## Otherwise log messages to a text file for now
+		self._log(resp)
+
+	def _log(self, msg):
+		log_file = open(config.IRC_LOG_FILE, "a+")
+		msg_list = msg.split("\r\n")
+		ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+		for m in msg_list:
+			log_file.write("[%s] %s\r\n" % (ts, m))
+
+	def _ts_print(self, message, newline=True, ts=True):
+		"""
+		Prints a nicely formatted string prefixed by a timestamp
+
+		Args:
+			message (string): Message to print
+			newline (bool): If False a newline will not be output
+			ts (bool): If false no timestamp will print
+		"""
+		timestamp = time.strftime("%H:%M", time.localtime())
+		if ts:
+			formatted = "[%s] %s" % (timestamp, message)
+		else:
+			formatted = message
+		if newline:
+			print(formatted)
+		else:
+			print(formatted, end=" ", flush=True)
+
+	def _pong(self):
+		"""
+		Send PONG to Twitch
+		"""
+		self.irc.send("PONG :tmi.twitch.tv\r\n".encode())
+		self._last_pong = time.time()
+		## Use default socket timeout since we know connection is alive
+		self.irc.settimeout(config.DEFAULT_SOCKET_TIMEOUT)
+		self._ts_print("PONG SEND")
+
+	def _ping(self):
+		"""
+		Send PING to Twitch
+		"""
+		## Theoretically we should never have to do this
+		## But twitch be twitchy
+		self.irc.send("PING :tmi.twitch.tv\r\n".encode())
+		self._ts_print("PING SEND")
+		self._last_ping = time.time()
+
+	def _check_alive(self):
+		"""
+		Check if the Twitch connection is active
+		Call reconnect() if something is sketchy
+		"""
+
+		## If we havent had a successful PING/PONG exchange in the last
+		## 400 seconds, initate a PING
+		if (time.time() - self._last_pong) > 400:
+			self._ts_print("Checking connection")
+			## Set socket timeout to 1 second because something seems to be off
+			self.irc.settimeout(1)
+			self._ping()
+		## If we sent a PING and it's been more than 2 seconds without a PONG
+		## assume the connection is dead and reconnect
+		elif (self._last_pong - self._last_ping) > 2:
+			self._ts_print("Ping timed out")
+			self.reconnect()
+
+	def disconnect(self):
+		"""
+		Disconnect socket from Twitch IRC server
+		Socket will be closed and unusable after called
+		Only call this when shutting down Voltron Bot
+		"""
+		self._ts_print("Shutting Down...", newline=False)
+		self.keep_listening = False
+		self.irc.shutdown(socket.SHUT_RDWR)
+		self.irc.close()
+		self._ts_print("done", ts=False)
+
+	def _format_seconds(self, seconds):
+		formatted = ""
+		days = seconds // (60 * 60 * 24)
+		if days:
+			formatted = formatted + "%01i days " % (days)
+		seconds %= (60 * 60 * 24)
+		hours = seconds // (60 * 60)
+		if hours:
+			formatted = formatted + "%01i hours " % (hours)
+		seconds %= (60 * 60)
+		minutes = seconds // 60
+		if minutes:
+			formatted = formatted + "%01i minutes " % (minutes)
+		seconds %= 60
+
+		return formatted.strip()
