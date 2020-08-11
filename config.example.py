@@ -6,9 +6,11 @@ DEBUG = True
 IRC_LOG_FILE = "irc.log"
 
 DEFAULT_SOCKET_TIMEOUT = 60
+OAUTH_HTTPD_PORT = 80
 
 ## Client ID for the twitch app.
 ## Register a developer app on Twitch to get one
 ## https://dev.twitch.tv/console/apps
 CLIENT_ID = "put client id here"
 CLIENT_SECRET = "put client secret here"
+SCOPES = "user:read:email chat:edit chat:read"
