@@ -1,7 +1,3 @@
-"""
-This module contains the main class for Voltron Bot
-"""
-
 import socket
 import sys
 import time
@@ -9,37 +5,32 @@ import re
 import signal
 import requests
 import json
+import threading
 
-from twitch_oauth import twitch_login, save_oauth
-from common import get_broadcaster
+from lib.twitch_oauth import twitch_login, save_oauth
+from lib.common import get_broadcaster
+from base.events import ChatCommandEvent
 
 import config
 
-class TwitchIRC:
+class IRCBase:
 	"""
 	The main class for the Twitch ChatBot.
 	This is the main thread and will manage all other threads.
 	"""
-	def __init__(self):
+	def __init__(self, buffer_queue, user, broadcaster):
+		self.buffer_queue = buffer_queue
+		self.user = user
+		self.broadcaster = broadcaster
 		self._ts_print("Starting Voltron Bot")
 		self._ts_print("Press Ctrl-C to exit")
 		self.keep_listening = True
+		self.reconnecting = False
 
 		## Use these variables to detmine uptime for the bot
 		## as well as time the socket has been connected
 		self.start_time = time.time()
 		self.socket_time = time.time()
-
-		login_info = twitch_login()
-		if login_info:
-			save_oauth(
-				login_info[0], # oauth token
-				login_info[1], # refresh_token
-				login_info[2], # expires in
-				True # is broadcaster
-			)
-
-		self.broadcaster = get_broadcaster()
 
 		## Set the socket timeout to 1 second until we ensure an active
 		## connection with a successful PING/PONG
@@ -78,8 +69,8 @@ class TwitchIRC:
 		"""
 		self._ts_print("Connecting...", newline=False)
 		self.irc.connect(('irc.chat.twitch.tv', 6667))
-		self.irc.send("PASS oauth:{oauth}\r\n".format(oauth=self.broadcaster.oauth_tokens.token).encode())
-		self.irc.send("NICK {nick}\r\n".format(nick=self.broadcaster.user_name).encode())
+		self.irc.send("PASS oauth:{oauth}\r\n".format(oauth=self.user.oauth_tokens.token).encode())
+		self.irc.send("NICK {nick}\r\n".format(nick=self.user.user_name).encode())
 		self.irc.send("CAP REQ :twitch.tv/tags twitch.tv/commands\r\n".encode())
 
 		## Update the socket time as we just connected
@@ -90,6 +81,7 @@ class TwitchIRC:
 		"""
 		Terminates the current socket connection to the Twitch IRC servers and calls connect()
 		"""
+		self.reconnecting = True
 		self._ts_print("Reconnecting...")
 		self.irc.shutdown(socket.SHUT_RDWR)
 		self.irc.close()
@@ -99,6 +91,7 @@ class TwitchIRC:
 
 		self.connect()
 		self.join_channels()
+		self.reconnecting = False
 
 	def join_channels(self):
 		"""
@@ -108,6 +101,12 @@ class TwitchIRC:
 		self.irc.send("JOIN #{channel}\r\n".format(channel=self.broadcaster.user_name).encode())
 		self.channel_map[self.broadcaster.user_name] = int(self.broadcaster.twitch_user_id)
 		self._ts_print('done', ts=False)
+
+		output_str = "{user} successfully joined #{channel}".format(
+			user = self.user.display_name,
+			channel = self.broadcaster.user_name
+		)
+		self.buffer_queue.put(('STATUS', output_str))
 
 	def listen(self):
 		"""
@@ -131,9 +130,10 @@ class TwitchIRC:
 				## if self.keep_listening is False, we assume that we are shutting
 				## down the client and the connection is intentially closed
 				if self.keep_listening:
-					raise e
+					if not self.reconnecting:
+						raise e
 
-	def send_message(self, message, channel, action=False):
+	def send_message(self, message, action=False):
 		"""
 		Sends a message in chat
 
@@ -146,7 +146,7 @@ class TwitchIRC:
 		## Format message appropaitely if we are sending as an ACTION
 		if action:
 			message = '\001ACTION {message} \001'.format(message=message)
-		self.irc.send("PRIVMSG #{channel} :{message}\r\n".format(channel=channel, message=message).encode())
+		self.irc.send("PRIVMSG #{channel} :{message}\r\n".format(channel=self.broadcaster.user_name, message=message).encode())
 
 	def _handle_response(self, resp):
 		## If Twitch pinged, respond with a pong and record a successful exchange
@@ -199,6 +199,8 @@ class TwitchIRC:
 
 			## See if the sender is the same as the logged in broadcaster
 			is_broadcaster = int(broadcaster_id) == int(user_id)
+			if is_broadcaster:
+				is_mod = True
 
 			## See if the broadcaster or a mod sent !ping to check the status
 			## of the bot
@@ -207,7 +209,7 @@ class TwitchIRC:
 				t_str = self._format_seconds(time.time() - self.start_time)
 				s_str = self._format_seconds(time.time() - self.socket_time)
 				msg = "has been watching you for %s (%s on this socket)" % (t_str, s_str)
-				self.send_message(msg, channel, action=True)
+				self.send_message(msg, action=True)
 
 			## Remove bullshit ASCI characters that will piss off the database
 			escapes = ''.join([chr(char) for char in range(1, 32)])
@@ -246,6 +248,12 @@ class TwitchIRC:
 			newline (bool): If False a newline will not be output
 			ts (bool): If false no timestamp will print
 		"""
+		output_str = "({channel}) {message}".format(
+			channel = self.user.user_name,
+			message = message
+		)
+		self.buffer_queue.put(('INFO', output_str))
+		return
 		timestamp = time.strftime("%H:%M", time.localtime())
 		if ts:
 			formatted = "[%s] %s" % (timestamp, message)
@@ -281,7 +289,6 @@ class TwitchIRC:
 		Check if the Twitch connection is active
 		Call reconnect() if something is sketchy
 		"""
-
 		## If we havent had a successful PING/PONG exchange in the last
 		## 400 seconds, initate a PING
 		if (time.time() - self._last_pong) > 400:
@@ -323,3 +330,36 @@ class TwitchIRC:
 		seconds %= 60
 
 		return formatted.strip()
+
+class BotIRC(threading.Thread, IRCBase):
+	def __init__(self, buffer_queue, user, broadcaster):
+		threading.Thread.__init__(self)
+		IRCBase.__init__(self, buffer_queue, user, broadcaster)
+
+	def run(self):
+		self.listen()
+
+class BroadcasterIRC(threading.Thread, IRCBase):
+	def __init__(self, event_queue, buffer_queue, user, broadcaster):
+		threading.Thread.__init__(self)
+		IRCBase.__init__(self, buffer_queue, user, broadcaster)
+		self.event_queue = event_queue
+
+	def run(self):
+		self.listen()
+
+	def message_received(self, display_name, user_id, is_mod, is_broadcaster, message):
+		match = re.search(r'^!([^ ]+)(.*)', message)
+		if match:
+			command = match.group(1)
+			args = match.group(2).strip()
+			event = ChatCommandEvent(
+				command,
+				args,
+				display_name,
+				user_id,
+				is_mod,
+				is_broadcaster
+			)
+			self.event_queue.put(event)
+		self._ts_print("{name}: {msg}".format(name=display_name, msg=message))

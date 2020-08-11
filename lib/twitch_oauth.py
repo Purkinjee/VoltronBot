@@ -7,8 +7,8 @@ import requests
 import json
 from datetime import datetime, timedelta
 
-from common import debug, OauthTokens, get_db
-from TwitchAPIHelper import TwitchAPIHelper
+from lib.common import debug, OauthTokens, get_db, User, get_user_by_twitch_id
+from lib.TwitchAPIHelper import TwitchAPIHelper
 import config
 
 class OauthRequestHandler(http.server.BaseHTTPRequestHandler):
@@ -19,9 +19,18 @@ class OauthRequestHandler(http.server.BaseHTTPRequestHandler):
 		try:
 			path, qs = self.path.split('?', 1)
 		except ValueError:
-			debug('Error pasring request URL')
+			#debug('Error pasring request URL')
 			return
 		get = parse_qs(qs)
+
+		## Check for an abort request
+		action = get.get('action', None)
+		if action and action[0] == 'abort':
+			self.send_response(200)
+			self.send_header("Content-type", "text/html")
+			self.end_headers()
+			self.wfile.write('Authorization aborted'.encode('utf8'))
+			return
 
 		## Twitch sends us a unique code that has to be sent back
 		## in the next request and has to match
@@ -124,28 +133,68 @@ def save_oauth(oauth_token, refresh_token, expires_in, is_broadcaster):
 		if res:
 			debug("Broadcaster Already Exists!")
 			## Broadcaster already exists and we should do somthing about it
-			sql = "DELETE FROM oauth WHERE is_broadcaster = 1"
+			sql = "UPDATE oauth SET is_broadcaster = 0 WHERE is_broadcaster = 1"
+			#sql = "DELETE FROM oauth WHERE is_broadcaster = 1"
 			cur.execute(sql)
+			con.commit()
 
 	## SQLite doesn't support booleans so convert to an integer
 	is_broadcaster_int = int(is_broadcaster == True)
-	sql = "INSERT INTO oauth \
-		(user_name, login_time, display_name, twitch_user_id, oauth_token, refresh_token, token_expire_time, is_broadcaster) \
-		VALUES (?, datetime('now'), ?, ?, ?, ?, ?, ?)"
 
-	cur.execute(sql, (
-		this_user['login'],
-		this_user['display_name'],
-		this_user['id'],
-		oauth_token,
-		refresh_token,
-		expire_time,
-		is_broadcaster_int
+	## If an account already exists for this twitch user, update the
+	## existing account
+	existing = get_user_by_twitch_id(this_user['id'])
+	new_user = None
+	sql = 'SELECT id FROM oauth WHERE is_default = 1'
+	cur.execute(sql)
+	default = cur.fetchone()
+	is_default = 0 if default else 1
+	if existing:
+		sql = "UPDATE oauth SET \
+		user_name = ?, \
+		login_time = datetime('now'), \
+		display_name = ?, \
+		oauth_token = ?, \
+		refresh_token = ?, \
+		token_expire_time = ?, \
+		is_broadcaster = ? \
+		is_default = ? \
+		WHERE id = ? \
+		"
+		cur.execute(sql, (
+			this_user['login'],
+			this_user['display_name'],
+			oauth_token,
+			refresh_token,
+			expire_time,
+			is_broadcaster_int,
+			is_default,
+			existing.id
+		))
+		con.commit()
+		new_user = existing
+		new_user.refresh()
+	else:
+		sql = "INSERT INTO oauth \
+			(user_name, login_time, display_name, twitch_user_id, oauth_token, refresh_token, token_expire_time, is_broadcaster, is_default) \
+			VALUES (?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)"
+
+		cur.execute(sql, (
+			this_user['login'],
+			this_user['display_name'],
+			this_user['id'],
+			oauth_token,
+			refresh_token,
+			expire_time,
+			is_broadcaster_int,
+			is_default
+			)
 		)
-	)
-	con.commit()
+		con.commit()
+		new_user = User(cur.lastrowid)
 	con.close()
 
+	return new_user
 
 def twitch_login():
 	## Create a random state string and salt it with mayo (for now)
@@ -158,19 +207,20 @@ def twitch_login():
 		'&client_id={client_id}'
 		'&redirect_uri=http://localhost/'
 		'&response_type=token'
-		'&scope=user:read:email%20chat:edit%20chat:read'
+		'&scope={scope}'
 		'&state={state}'
 		'&force_verify=true'
 	).format(
 		client_id = config.CLIENT_ID,
-		state = md5
+		state = md5,
+		scope = config.SCOPES.replace(' ', '%20')
 	)
 
 	## Open the webbrowser and show the url we just created
 	webbrowser.open(url, autoraise=True)
 
 	## Start the HTTP server and wait for a response
-	httpd = OauthResponseServer(md5, ('', 80), OauthRequestHandler)
+	httpd = OauthResponseServer(md5, ('', config.OAUTH_HTTPD_PORT), OauthRequestHandler)
 	httpd.handle_request()
 
 	if not httpd.auth_success:
