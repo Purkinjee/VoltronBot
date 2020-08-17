@@ -341,7 +341,7 @@ Control-C to exit
 			pass
 		else:
 			command = self.modules[module_name].admin_command(trigger)
-			command.execute()
+			command.execute(params.strip())
 
 	def show_help(self, module=None, trigger=None):
 		"""
@@ -373,7 +373,7 @@ Control-C to exit
 						count = 0
 						this_line = "    "
 
-					this_line += trigger.ljust(15)
+					this_line += trigger.ljust(20)
 					count += 1
 
 				help_str += "{}\n".format(this_line)

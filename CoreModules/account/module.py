@@ -74,7 +74,7 @@ class Account(ModuleBase):
 			description = 'Delete an account.'
 		))
 
-	def add_account(self):
+	def add_account(self, input):
 		self.buffer_print('VOLTRON', 'Authorizing new account...')
 		self.buffer_print('VOLTRON', 'Type C to cancel')
 		self.update_status_text('Awaiting auth...')
@@ -82,13 +82,13 @@ class Account(ModuleBase):
 		self.login_thread = GetTwitchLogin(self, self.login_thread_queue)
 		self.login_thread.start()
 
-	def refresh_accounts(self):
+	def refresh_accounts(self, input):
 		for account in self.voltron.users:
 			account.update()
 			self.buffer_print('VOLTRON', '{} updated'.format(account.display_name))
 		self.buffer_print('VOLTRON', 'Update Complete!')
 
-	def set_default(self):
+	def set_default(self, input):
 		## This will list all accounts, allow the user to select
 		## one to make default, or cancel
 		account_list = self.list_accounts()
@@ -130,7 +130,7 @@ class Account(ModuleBase):
 		self.update_status_text('Select account to make default, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
 
-	def set_broadcaster(self):
+	def set_broadcaster(self, input):
 		## This will list all accounts, allow the user to select
 		## one to make broadcaster, or cancel
 		account_list = self.list_accounts()
@@ -172,7 +172,7 @@ class Account(ModuleBase):
 		self.update_status_text('Select account to make broadcaster, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
 
-	def remove_account(self):
+	def remove_account(self, input):
 		account_list = self.list_accounts()
 
 		def select_account(prompt):
@@ -211,25 +211,6 @@ class Account(ModuleBase):
 
 		self.update_status_text('Select account to delete, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
-
-	def list_accounts(self):
-		users = get_all_acccounts()
-		count = 1
-		self.buffer_print('VOLTRON', '')
-		account_list = []
-		for user in users:
-			output_str = '{num}. {display} default={default} broadcaster={broadcaster}'.format(
-				num = count,
-				display = user.display_name,
-				channel = user.user_name,
-				default = user.is_default,
-				broadcaster = user.is_broadcaster
-			)
-			account_list.append(user.id)
-			self.buffer_print('VOLTRON', output_str)
-			count += 1
-		self.buffer_print('VOLTRON', '')
-		return account_list
 
 	def login_thread_done(self, login_info):
 		## Called from the login thread upon completion

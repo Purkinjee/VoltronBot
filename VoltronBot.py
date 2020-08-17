@@ -122,13 +122,16 @@ class VoltronBot:
 		con.commit()
 		con.close()
 
-	def send_chat_message(self, message):
+	def send_chat_message(self, message, twitch_id=None):
 		"""
 		Send a message to IRC using the default account
 		Args:
 			message (string): Message to be sent
 		"""
-		self.irc_map[self.default_account.twitch_user_id].send_message(message)
+		if twitch_id and twitch_id in self.irc_map:
+			self.irc_map[twitch_id].send_message(message)
+		else:
+			self.irc_map[self.default_account.twitch_user_id].send_message(message)
 
 	def stop(self):
 		"""

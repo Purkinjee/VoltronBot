@@ -1,3 +1,6 @@
+from lib.common import get_all_acccounts
+from lib.twitch_oauth import User
+
 class ModuleAdminCommand:
 	"""
 	Class used for creating admin commands for modules.
@@ -15,8 +18,8 @@ class ModuleAdminCommand:
 		self.usage = usage
 		self.description = description
 
-	def execute(self, params=[]):
-		self.action(*params)
+	def execute(self, input):
+		self.action(input)
 
 class ModuleBase:
 	"""
@@ -56,8 +59,8 @@ class ModuleBase:
 	def event_listen(self, event_type, callback, event_params=None):
 		self.event_loop.register_event(event_type, callback, event_params)
 
-	def send_chat_message(self, message):
-		self.voltron.send_chat_message(message)
+	def send_chat_message(self, message, twitch_id = None):
+		self.voltron.send_chat_message(message, twitch_id)
 
 	def get_prompt(self, prompt=None, callback=None):
 		return self.voltron.ui.mod_prompt(prompt, callback)
@@ -82,3 +85,49 @@ class ModuleBase:
 
 	def admin_command(self, trigger):
 		return self.admin_commands.get(trigger, None)
+
+	def select_account(self, callback):
+		account_list = self.list_accounts()
+		selected_user = None
+
+		def selection_made(prompt):
+			if prompt.lower().strip() == 'c':
+				self.update_status_text()
+				return True
+			try:
+				selection = int(prompt)
+			except:
+				return False
+
+			if selection < 0 or selection > len(account_list):
+				self.buffer_print('VOLTRON', 'Invalid selection')
+				return False
+
+			selected_user = User(account_list[selection-1])
+			callback(selected_user)
+			self.update_status_text()
+			return True
+
+
+		self.update_status_text('Select account')
+		self.get_prompt('Account Number> ', selection_made)
+		return selected_user
+
+	def list_accounts(self):
+		users = get_all_acccounts()
+		count = 1
+		self.buffer_print('VOLTRON', '')
+		account_list = []
+		for user in users:
+			output_str = '{num}. {display} default={default} broadcaster={broadcaster}'.format(
+				num = count,
+				display = user.display_name,
+				channel = user.user_name,
+				default = user.is_default,
+				broadcaster = user.is_broadcaster
+			)
+			account_list.append(user.id)
+			self.buffer_print('VOLTRON', output_str)
+			count += 1
+		self.buffer_print('VOLTRON', '')
+		return account_list
