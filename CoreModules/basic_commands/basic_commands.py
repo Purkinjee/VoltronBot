@@ -15,6 +15,7 @@ class BasicCommands(ModuleBase):
 
 		self._static_commands = {
 			'addcommand': self._add_command,
+			'appendcommand': self._append_command,
 			'deletecommand': self._delete_command
 		}
 
@@ -53,6 +54,9 @@ class BasicCommands(ModuleBase):
 			description = 'Set the global and user cooldown for !<command> in seconds.'
 		))
 
+		#for command in self._commands:
+		#	self._commands[command]['runtime'] = {'global': 0, 'user': {}}
+
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
@@ -78,7 +82,7 @@ class BasicCommands(ModuleBase):
 			## check user cooldown
 			user_elapsed = time.time() - self._commands[event.command]['runtime']['user'].get(event.user_id, 0)
 			user_cooldown = self._commands[event.command].get('user_cooldown', self._default_cooldown)
-			if user_elapsed < user_cooldown:
+			if not event.is_broadcaster and user_elapsed < user_cooldown:
 				remaining = user_cooldown - user_elapsed
 				self.send_chat_message("Command !{command} is on cooldown ({remaining}s)".format(
 					command = event.command,
@@ -89,7 +93,7 @@ class BasicCommands(ModuleBase):
 			## check global cooldown
 			global_elapsed = time.time() - self._commands[event.command]['runtime']['global']
 			global_cooldown = self._commands[event.command].get('global_cooldown', self._default_cooldown)
-			if global_elapsed < global_cooldown:
+			if not event.is_broadcaster and global_elapsed < global_cooldown:
 				remaining = global_cooldown - global_elapsed
 				self.send_chat_message("Command !{command} is on cooldown ({remaining}s)".format(
 					command = event.command,
@@ -97,7 +101,8 @@ class BasicCommands(ModuleBase):
 				), twitch_id)
 				return
 
-			self.send_chat_message(self._commands[event.command]['response'], twitch_id)
+			for response in self._commands[event.command]['response']:
+				self.send_chat_message(response, twitch_id)
 			self._commands[event.command]['runtime']['global'] = time.time()
 			self._commands[event.command]['runtime']['user'][event.user_id] = time.time()
 
@@ -111,12 +116,31 @@ class BasicCommands(ModuleBase):
 			command = match.group(1)
 			response = match.group(2).strip()
 			if command in self._commands:
-				self._commands[command]['response'] = response
+				self._commands[command]['response'] = [response]
 			else:
-				self._commands[command] = { 'response': response }
+				self._commands[command] = { 'response': [response] }
 
 			self.save_module_data(self._commands)
 			self.send_chat_message('Command !{} successfully added!'.format(command))
+
+	def _append_command(self, event):
+		if not event.is_mod:
+			self.send_chat_message("@{} you are not a mod.".format(event.display_name))
+			return
+
+		match = re.search(r'^!([^ ]+) (.*)', event.args)
+		if match:
+			command = match.group(1)
+			response = match.group(2).strip()
+
+			if not command in self._commands:
+				self.send_chat_message('Command !{} not found'.format(command))
+				return
+
+			self._commands[command]['response'].append(response)
+			self.save_module_data(self._commands)
+			self.send_chat_message('Command !{} successfully modified'.format(command))
+
 
 	def _delete_command(self, event):
 		if not event.is_mod:
@@ -235,7 +259,7 @@ class BasicCommands(ModuleBase):
 
 			for user_id in self._commands[command]['runtime']['user']:
 				if (time.time() - self._commands[command]['runtime']['user'][user_id]) < user_cooldown:
-					user_cooldowns[user_id] = self._commands[command]['runtime']['user']
+					user_cooldowns[user_id] = self._commands[command]['runtime']['user'][user_id]
 
 			self._commands[command]['runtime']['user'] = user_cooldowns
 
