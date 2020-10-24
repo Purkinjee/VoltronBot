@@ -74,7 +74,7 @@ class Account(ModuleBase):
 			description = 'Delete an account.'
 		))
 
-	def add_account(self, input):
+	def add_account(self, input, command):
 		self.buffer_print('VOLTRON', 'Authorizing new account...')
 		self.buffer_print('VOLTRON', 'Type C to cancel')
 		self.update_status_text('Awaiting auth...')
@@ -82,13 +82,13 @@ class Account(ModuleBase):
 		self.login_thread = GetTwitchLogin(self, self.login_thread_queue)
 		self.login_thread.start()
 
-	def refresh_accounts(self, input):
+	def refresh_accounts(self, input, command):
 		for account in self.voltron.users:
 			account.update()
 			self.buffer_print('VOLTRON', f'{account.display_name} updated')
 		self.buffer_print('VOLTRON', 'Update Complete!')
 
-	def set_default(self, input):
+	def set_default(self, input, command):
 		## This will list all accounts, allow the user to select
 		## one to make default, or cancel
 		account_list = self.list_accounts()
@@ -130,7 +130,7 @@ class Account(ModuleBase):
 		self.update_status_text('Select account to make default, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
 
-	def set_broadcaster(self, input):
+	def set_broadcaster(self, input, command):
 		## This will list all accounts, allow the user to select
 		## one to make broadcaster, or cancel
 		account_list = self.list_accounts()
@@ -172,7 +172,7 @@ class Account(ModuleBase):
 		self.update_status_text('Select account to make broadcaster, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
 
-	def remove_account(self, input):
+	def remove_account(self, input, command):
 		account_list = self.list_accounts()
 
 		def select_account(prompt):

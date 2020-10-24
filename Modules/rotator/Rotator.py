@@ -69,9 +69,9 @@ class Rotator(ModuleBase):
 	def chat_message(self, event):
 		self._message_count += 1
 
-	def add_message(self, input):
+	def add_message(self, input, command):
 		if not input:
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} add <message>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		if not 'messages' in self._rotator_data:
@@ -82,7 +82,7 @@ class Rotator(ModuleBase):
 
 		self.buffer_print('VOLTRON', f"Rotator message added: {input}")
 
-	def list_messages(self, input):
+	def list_messages(self, input, command):
 		messages = self._rotator_data.get('messages', [])
 
 		if not messages:
@@ -97,7 +97,7 @@ class Rotator(ModuleBase):
 
 		return messages
 
-	def delete_message(self, input):
+	def delete_message(self, input, command):
 		message_list = self.list_messages(None)
 
 		def select_message(prompt):
@@ -139,9 +139,9 @@ class Rotator(ModuleBase):
 		self.update_status_text('Select message to delete, c to cancel')
 		self.prompt_ident = self.get_prompt('Message Number> ', select_message)
 
-	def set_time_threshold(self, input):
+	def set_time_threshold(self, input, command):
 		if not input.isdigit():
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} time <minutes>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			self.buffer_print('VOLTRON', f'Current time: {int(self.time_threshold/60)}m')
 			return
 
@@ -151,9 +151,9 @@ class Rotator(ModuleBase):
 		self.save_module_data(self._rotator_data)
 		self.buffer_print('VOLTRON', f'Time interval set to {new_time} minutes')
 
-	def set_message_threshold(self, input):
+	def set_message_threshold(self, input, command):
 		if not input.isdigit():
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} messagecount <messages>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			self.buffer_print('VOLTRON', f'Current message count: {self.message_threshold}')
 			return
 

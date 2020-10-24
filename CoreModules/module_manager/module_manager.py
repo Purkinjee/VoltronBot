@@ -19,10 +19,10 @@ class ModuleManager(ModuleBase):
 			description = 'List all modules'
 		))
 
-	def toggle_module(self, input):
+	def toggle_module(self, input, command):
 		match = re.search(r'^([^ ]+)$', input.strip())
 		if not match:
-			self.buffer_print('VOLTRON', 'Usage: module toggle <module name>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		module_name = match.group(1)
@@ -46,7 +46,7 @@ class ModuleManager(ModuleBase):
 		con.commit()
 		con.close()
 
-	def list_modules(self, input):
+	def list_modules(self, input, command):
 		con, cur = get_db()
 
 		sql = "SELECT * FROM modules"

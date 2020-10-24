@@ -162,11 +162,11 @@ class BasicCommands(ModuleBase):
 		self.save_module_data(self._commands)
 		self.send_chat_message(f'Command !{command} successfully deleted!')
 
-	def set_cooldowns(self, input):
+	def set_cooldowns(self, input, command):
 		match = re.search(r'^!([^ ]+) ([0-9]+) ([0-9]+)$', input)
 		if not match:
 			self.buffer_print('VOLTRON', 'Invalid paramaters')
-			self.buffer_print('VOLTRON', 'Usage: !<command> <global_cooldown> <user_cooldown>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -184,10 +184,10 @@ class BasicCommands(ModuleBase):
 		self.buffer_print('VOLTRON', f'global = {global_cooldown}')
 		self.buffer_print('VOLTRON', f'user = {user_cooldown}')
 
-	def toggle_mod_only(self, input):
+	def toggle_mod_only(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', 'Must include command')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -203,10 +203,10 @@ class BasicCommands(ModuleBase):
 
 		self.buffer_print('VOLTRON', f'Permission changed for !{command} (mod_only={mod_only})')
 
-	def toggle_broadcaster_only(self, input):
+	def toggle_broadcaster_only(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', 'Must include command')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -222,10 +222,10 @@ class BasicCommands(ModuleBase):
 
 		self.buffer_print('VOLTRON', f'Permission changed for !{command} (broadcaster_only={broadcaster_only})')
 
-	def command_account(self, input):
+	def command_account(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', 'Must include command')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -239,17 +239,17 @@ class BasicCommands(ModuleBase):
 
 		self.select_account(account_selected)
 
-	def list_commands(self, input):
+	def list_commands(self, input, command):
 		self.buffer_print('VOLTRON', '')
 		self.buffer_print('VOLTRON', f'Available commands in {self.module_name} module:')
 		self._print_commands()
 		self.buffer_print('VOLTRON', '')
 
-	def command_details(self, input):
+	def command_details(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', 'Must include command')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)

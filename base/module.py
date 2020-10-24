@@ -21,7 +21,7 @@ class ModuleAdminCommand:
 		self.description = description
 
 	def execute(self, input):
-		self.action(input)
+		self.action(input, self)
 
 class ModuleBase:
 	"""

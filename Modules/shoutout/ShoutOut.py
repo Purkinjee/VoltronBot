@@ -57,7 +57,7 @@ class ShoutOut(ModuleBase):
 				twitch_id = self._shoutout_data.get('account', None)
 				self.send_chat_message(chat_str, twitch_id)
 
-	def set_command(self, input):
+	def set_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 
 		if match:
@@ -70,11 +70,11 @@ class ShoutOut(ModuleBase):
 
 		else:
 			self.buffer_print('VOLTRON', f'Current command: !{self.so_command}')
-			self.buffer_print('VOLTRON', 'Must include command.')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 
-	def set_message(self, input):
+	def set_message(self, input, command):
 		if not input:
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} message <message>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			self.buffer_print('VOLTRON', 'Available variables: {streamer}, {game}, {url}')
 			self.buffer_print('VOLTRON', f'Current message: {self.so_str}')
 			return
@@ -85,7 +85,7 @@ class ShoutOut(ModuleBase):
 		self.buffer_print('VOLTRON', 'Shoutout message updated:')
 		self.buffer_print('VOLTRON', self.so_str)
 
-	def set_response_account(self, input):
+	def set_response_account(self, input, command):
 		def account_selected(account):
 			self._shoutout_data['account'] = account.twitch_user_id
 			self.save_module_data(self._shoutout_data)

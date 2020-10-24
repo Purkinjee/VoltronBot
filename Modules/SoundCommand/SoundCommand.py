@@ -103,10 +103,10 @@ class SoundCommand(ModuleBase):
 		self._commands['commands'][event.command]['runtime'] = time.time()
 		self.play_audio(sound_path)
 
-	def _add_command(self, input):
+	def _add_command(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+)', input)
 		if not match:
-			self.buffer_print('VOLTRON', "Usage: sound_command add <!command> <soundfile.mp3>")
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -120,7 +120,7 @@ class SoundCommand(ModuleBase):
 		self.save_module_data(self._commands)
 		self.buffer_print('VOLTRON', f'Sound Command !{command} successfully added!')
 
-	def _list_commands(self, input):
+	def _list_commands(self, input, command):
 		self.buffer_print('VOLTRON', '')
 		self.buffer_print('VOLTRON', 'Sound Commands:')
 
@@ -135,7 +135,7 @@ class SoundCommand(ModuleBase):
 
 		return command_list
 
-	def _command_details(self, input):
+	def _command_details(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
 			self.buffer_print('VOLTRON', f'Usage: {self.module_name} details !<command>')
@@ -158,10 +158,10 @@ class SoundCommand(ModuleBase):
 		self.buffer_print('VOLTRON', f'  Cooldown: {cooldown}')
 
 
-	def _delete_command(self, input):
+	def _delete_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input.strip())
 		if not match:
-			self.buffer_print('VOLTRON', 'Usage: sound_command delete <!command>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		selected_command = match.group(1)
@@ -173,10 +173,10 @@ class SoundCommand(ModuleBase):
 		self.save_module_data(self._commands)
 		self.buffer_print('VOLTRON', f'Command !{selected_command} deleted')
 
-	def _toggle_mod_only(self, input):
+	def _toggle_mod_only(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input.strip())
 		if not match:
-			self.buffer_print('VOLTRON', 'Usage: sound_command delete <!command>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		selected_command = match.group(1)
@@ -190,10 +190,10 @@ class SoundCommand(ModuleBase):
 
 		self.buffer_print('VOLTRON', f'Command !{selected_command} updated (mod_only={mod_only})')
 
-	def _toggle_broadcaster_only(self, input):
+	def _toggle_broadcaster_only(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input.strip())
 		if not match:
-			self.buffer_print('VOLTRON', 'Usage: sound_command delete <!command>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		selected_command = match.group(1)
@@ -207,10 +207,10 @@ class SoundCommand(ModuleBase):
 
 		self.buffer_print('VOLTRON', f'Command !{selected_command} updated (broadcaster_only={broadcaster_only})')
 
-	def _set_cooldown(self, input):
+	def _set_cooldown(self, input, command):
 		match = re.search(r'^!([^ ]+) ([0-9]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} cooldown <!command> <seconds>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -223,9 +223,9 @@ class SoundCommand(ModuleBase):
 		self._commands['commands'][command]['cooldown'] = cooldown
 		self.buffer_print('VOLTRON', f'Cooldown for !{command} set to {cooldown}s')
 
-	def _set_directory(self, input):
+	def _set_directory(self, input, command):
 		if not input:
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} directory <full path>')
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			self.buffer_print('VOLTRON', f'Current directory: {self.sound_dir}')
 			return
 
