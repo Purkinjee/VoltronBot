@@ -6,6 +6,7 @@ from urllib.parse import parse_qs
 import requests
 import json
 from datetime import datetime, timedelta
+from cryptography.fernet import Fernet
 
 from lib.common import debug, OauthTokens, get_db, User, get_user_by_twitch_id
 from lib.TwitchAPIHelper import TwitchAPIHelper
@@ -112,6 +113,10 @@ def save_oauth(oauth_token, refresh_token, expires_in, is_broadcaster):
 	## is valid. Fetch all of the user information from the Twitch API
 	## and save it to our database
 	expire_time = datetime.now() + timedelta(seconds=expires_in)
+	cipher = Fernet(config.FERNET_KEY)
+	oauth_token = cipher.encrypt(oauth_token.encode())
+	refresh_token = cipher.encrypt(refresh_token.encode())
+
 	token = OauthTokens(oauth_token, refresh_token, expire_time)
 	api = TwitchAPIHelper(token)
 	user_info = api.get_this_user()

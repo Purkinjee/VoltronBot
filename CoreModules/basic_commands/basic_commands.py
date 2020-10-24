@@ -1,5 +1,6 @@
 from base.module import ModuleBase, ModuleAdminCommand
 from base.events import EVT_CHATCOMMAND
+from lib.common import get_user_by_twitch_id
 import re
 import time
 
@@ -22,35 +23,42 @@ class BasicCommands(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'list',
 			self.list_commands,
-			usage = 'basic_commands list',
+			usage = f'{self.module_name} list',
 			description = 'List all basic commands'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'details',
+			self.command_details,
+			usage = f'{self.module_name} details !<command>',
+			description = 'Show details of !<command>'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'command_account',
 			self.command_account,
-			usage = 'basic_commands command_account !<command>',
+			usage = f'{self.module_name} command_account !<command>',
 			description = 'Change the response account for !<command>'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'mod_only',
 			self.toggle_mod_only,
-			usage = 'basic_commands mod_only !<command>',
+			usage = f'{self.module_name} mod_only !<command>',
 			description = 'Toggle mod only permission for command'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'broadcaster_only',
 			self.toggle_broadcaster_only,
-			usage = 'basic_commands broadcaster_only !<command>',
+			usage = f'{self.module_name} broadcaster_only !<command>',
 			description = 'Toggle broadcaster only permission for command'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'cooldowns',
 			self.set_cooldowns,
-			usage = 'basic_commands cooldowns !<command> <global cooldown> <user cooldown>',
+			usage = f'{self.module_name} cooldowns !<command> <global cooldown> <user cooldown>',
 			description = 'Set the global and user cooldown for !<command> in seconds.'
 		))
 
@@ -84,10 +92,7 @@ class BasicCommands(ModuleBase):
 			user_cooldown = self._commands[event.command].get('user_cooldown', self._default_cooldown)
 			if not event.is_broadcaster and user_elapsed < user_cooldown:
 				remaining = user_cooldown - user_elapsed
-				self.send_chat_message("Command !{command} is on cooldown ({remaining}s)".format(
-					command = event.command,
-					remaining = int(remaining)
-				), twitch_id)
+				self.send_chat_message(f"Command !{event.command} is on cooldown ({int(remaining)}s)", twitch_id)
 				return
 
 			## check global cooldown
@@ -95,10 +100,7 @@ class BasicCommands(ModuleBase):
 			global_cooldown = self._commands[event.command].get('global_cooldown', self._default_cooldown)
 			if not event.is_broadcaster and global_elapsed < global_cooldown:
 				remaining = global_cooldown - global_elapsed
-				self.send_chat_message("Command !{command} is on cooldown ({remaining}s)".format(
-					command = event.command,
-					remaining = int(remaining)
-				), twitch_id)
+				self.send_chat_message(f"Command !{event.command} is on cooldown ({int(remaining)}s)", twitch_id)
 				return
 
 			for response in self._commands[event.command]['response']:
@@ -108,7 +110,7 @@ class BasicCommands(ModuleBase):
 
 	def _add_command(self, event):
 		if not event.is_mod:
-			self.send_chat_message("@{} you are not a mod.".format(event.display_name))
+			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
 		match = re.search(r'^!([^ ]+) (.*)', event.args)
@@ -121,11 +123,11 @@ class BasicCommands(ModuleBase):
 				self._commands[command] = { 'response': [response] }
 
 			self.save_module_data(self._commands)
-			self.send_chat_message('Command !{} successfully added!'.format(command))
+			self.send_chat_message(f'Command !{command} successfully added!')
 
 	def _append_command(self, event):
 		if not event.is_mod:
-			self.send_chat_message("@{} you are not a mod.".format(event.display_name))
+			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
 		match = re.search(r'^!([^ ]+) (.*)', event.args)
@@ -134,17 +136,17 @@ class BasicCommands(ModuleBase):
 			response = match.group(2).strip()
 
 			if not command in self._commands:
-				self.send_chat_message('Command !{} not found'.format(command))
+				self.send_chat_message(f'Command !{command} not found')
 				return
 
 			self._commands[command]['response'].append(response)
 			self.save_module_data(self._commands)
-			self.send_chat_message('Command !{} successfully modified'.format(command))
+			self.send_chat_message(f'Command !{command} successfully modified')
 
 
 	def _delete_command(self, event):
 		if not event.is_mod:
-			self.send_chat_message("@{} you are not a mod.".format(event.display_name))
+			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 		match = re.search(r'^!([^ ]+)$', event.args)
 		if not match:
@@ -153,12 +155,12 @@ class BasicCommands(ModuleBase):
 
 		command = match.group(1)
 		if not command in  self._commands.keys():
-			self.send_chat_message('Command !{} not found'.format(command))
+			self.send_chat_message(f'Command !{command} not found')
 			return
 
 		del self._commands[command]
 		self.save_module_data(self._commands)
-		self.send_chat_message('Command !{} successfully deleted!'.format(command))
+		self.send_chat_message(f'Command !{command} successfully deleted!')
 
 	def set_cooldowns(self, input):
 		match = re.search(r'^!([^ ]+) ([0-9]+) ([0-9]+)$', input)
@@ -169,7 +171,7 @@ class BasicCommands(ModuleBase):
 
 		command = match.group(1)
 		if not command in self._commands:
-			self.buffer_print('VOLTRON', 'Command !{} does not exist'.format(command))
+			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
 			return
 
 		global_cooldown = int(match.group(2))
@@ -178,9 +180,9 @@ class BasicCommands(ModuleBase):
 		self._commands[command]['global_cooldown'] = global_cooldown
 		self._commands[command]['user_cooldown'] = user_cooldown
 
-		self.buffer_print('VOLTRON', 'Cooldowns set for command !{}'.format(command))
-		self.buffer_print('VOLTRON', 'global = {}'.format(global_cooldown))
-		self.buffer_print('VOLTRON', 'user = {}'.format(user_cooldown))
+		self.buffer_print('VOLTRON', f'Cooldowns set for command !{command}')
+		self.buffer_print('VOLTRON', f'global = {global_cooldown}')
+		self.buffer_print('VOLTRON', f'user = {user_cooldown}')
 
 	def toggle_mod_only(self, input):
 		match = re.search(r'^!([^ ]+)$', input)
@@ -190,7 +192,7 @@ class BasicCommands(ModuleBase):
 
 		command = match.group(1)
 		if not command in self._commands:
-			self.buffer_print('VOLTRON', 'Command !{} does not exist'.format(command))
+			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
 			return
 
 		mod_only = self._commands[command].get('mod_only', False)
@@ -199,10 +201,7 @@ class BasicCommands(ModuleBase):
 		self._commands[command]['mod_only'] = mod_only
 		self.save_module_data(self._commands)
 
-		self.buffer_print('VOLTRON', 'Permission changed for !{command} (mod_only={mod_only})'.format(
-			command = command,
-			mod_only = mod_only
-		))
+		self.buffer_print('VOLTRON', f'Permission changed for !{command} (mod_only={mod_only})')
 
 	def toggle_broadcaster_only(self, input):
 		match = re.search(r'^!([^ ]+)$', input)
@@ -212,7 +211,7 @@ class BasicCommands(ModuleBase):
 
 		command = match.group(1)
 		if not command in self._commands:
-			self.buffer_print('VOLTRON', 'Command !{} does not exist'.format(command))
+			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
 			return
 
 		broadcaster_only = self._commands[command].get('broadcaster_only', False)
@@ -221,11 +220,7 @@ class BasicCommands(ModuleBase):
 		self._commands[command]['broadcaster_only'] = broadcaster_only
 		self.save_module_data(self._commands)
 
-		self.buffer_print('VOLTRON', 'Permission changed for !{command} (broadcaster_only={broadcaster_only})'.format(
-			command = command,
-			broadcaster_only = broadcaster_only
-		))
-
+		self.buffer_print('VOLTRON', f'Permission changed for !{command} (broadcaster_only={broadcaster_only})')
 
 	def command_account(self, input):
 		match = re.search(r'^!([^ ]+)$', input)
@@ -235,7 +230,7 @@ class BasicCommands(ModuleBase):
 
 		command = match.group(1)
 		if not command in self._commands:
-			self.buffer_print('VOLTRON', 'Command !{} does not exist'.format(command))
+			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
 			return
 
 		def account_selected(account):
@@ -246,9 +241,43 @@ class BasicCommands(ModuleBase):
 
 	def list_commands(self, input):
 		self.buffer_print('VOLTRON', '')
-		self.buffer_print('VOLTRON', 'Available commands in basic_command module:')
+		self.buffer_print('VOLTRON', f'Available commands in {self.module_name} module:')
 		self._print_commands()
 		self.buffer_print('VOLTRON', '')
+
+	def command_details(self, input):
+		match = re.search(r'^!([^ ]+)$', input)
+
+		if not match:
+			self.buffer_print('VOLTRON', 'Must include command')
+			return
+
+		command = match.group(1)
+		if not command in self._commands:
+			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
+			return
+
+		mod_only = self._commands[command].get('mod_only', False)
+		broadcaster_only = self._commands[command].get('broadcaster_only', False)
+		user_cooldown = self._commands[command].get('user_cooldown', 'Not Set')
+		global_cooldown = self._commands[command].get('global_cooldown', f'Default ({self._default_cooldown})')
+		twitch_id = self._commands[command].get('response_twitch_id', None)
+		twitch_user_name = "Default"
+		if twitch_id:
+			user = get_user_by_twitch_id(twitch_id)
+			if user:
+				twitch_user_name = user.display_name
+
+		self.buffer_print('VOLTRON', f'Details for command !{command}:')
+		self.buffer_print('VOLTRON', f'  Response Account: {twitch_user_name}')
+		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
+		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
+		self.buffer_print('VOLTRON', f'  Global Cooldown: {global_cooldown}')
+		self.buffer_print('VOLTRON', f'  User Cooldown: {user_cooldown}')
+		self.buffer_print('VOLTRON',  '  Response:')
+
+		for line in self._commands[command]['response']:
+			self.buffer_print('VOLTRON', f'    {line}')
 
 	def remove_expired_cooldowns(self):
 		for command in self._commands:

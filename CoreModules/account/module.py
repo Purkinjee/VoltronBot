@@ -35,42 +35,42 @@ class Account(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'add',
 			self.add_account,
-			usage = 'account add',
+			usage = f'{self.module_name} add',
 			description = 'Add a new Twtich account.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'list',
 			self.list_accounts,
-			usage = 'account list',
+			usage = f'{self.module_name} list',
 			description = 'List all accounts.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'refresh',
 			self.refresh_accounts,
-			usage = 'account refresh',
+			usage = f'{self.module_name} refresh',
 			description = 'Update all accounts using Twitch API'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'default',
 			self.set_default,
-			usage = 'account default',
+			usage = f'{self.module_name} default',
 			description = 'Set the default account to send chat messages'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'broadcaster',
 			self.set_broadcaster,
-			usage = 'account broadcaster',
+			usage = f'{self.module_name} broadcaster',
 			description = 'Set the broadcaster account'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'delete',
 			self.remove_account,
-			usage = 'account delete',
+			usage = f'{self.module_name} delete',
 			description = 'Delete an account.'
 		))
 
@@ -85,7 +85,7 @@ class Account(ModuleBase):
 	def refresh_accounts(self, input):
 		for account in self.voltron.users:
 			account.update()
-			self.buffer_print('VOLTRON', '{} updated'.format(account.display_name))
+			self.buffer_print('VOLTRON', f'{account.display_name} updated')
 		self.buffer_print('VOLTRON', 'Update Complete!')
 
 	def set_default(self, input):
@@ -117,13 +117,13 @@ class Account(ModuleBase):
 					return False
 
 				selected_user.make_default()
-				self.buffer_print('VOLTRON', '{} is now the default account, restarting.'.format(selected_user.display_name))
+				self.buffer_print('VOLTRON', f'{selected_user.display_name} is now the default account, restarting.')
 				self.update_status_text()
 				self.voltron.reset()
 				self.voltron.start()
 				return True
 
-			self.update_status_text('Set default account to {}?'.format(selected_user.display_name))
+			self.update_status_text(f'Set default account to {selected_user.display_name}?')
 			self.terminate_prompt(self.prompt_ident)
 			self.prompt_ident = self.get_prompt('[Y]es/[N]o> ', confirm)
 
@@ -159,13 +159,13 @@ class Account(ModuleBase):
 					return False
 
 				selected_user.make_broadcaster()
-				self.buffer_print('VOLTRON', '{} is now the broadcaster, restarting.'.format(selected_user.display_name))
+				self.buffer_print('VOLTRON', f'{selected_user.display_name} is now the broadcaster, restarting.')
 				self.update_status_text()
 				self.voltron.reset()
 				self.voltron.start()
 				return True
 
-			self.update_status_text('Set broadcaster account to {}?'.format(selected_user.display_name))
+			self.update_status_text(f'Set broadcaster account to {selected_user.display_name}?')
 			self.terminate_prompt(self.prompt_ident)
 			self.prompt_ident = self.get_prompt('[Y]es/[N]o> ', confirm)
 
@@ -199,13 +199,13 @@ class Account(ModuleBase):
 					return False
 
 				selected_user.delete()
-				self.buffer_print('VOLTRON', '{} deleted, restarting.'.format(selected_user.display_name))
+				self.buffer_print('VOLTRON', f'{selected_user.display_name} deleted, restarting.')
 				self.update_status_text()
 				self.voltron.reset()
 				self.voltron.start()
 				return True
 
-			self.update_status_text('Delete account {}?'.format(selected_user.display_name))
+			self.update_status_text(f'Delete account {selected_user.display_name}?')
 			self.terminate_prompt(self.prompt_ident)
 			self.prompt_ident = self.get_prompt('[Y]es/[N]o> ', confirm)
 
@@ -260,9 +260,7 @@ class Account(ModuleBase):
 
 			broadcaster = get_broadcaster()
 			if broadcaster and is_broadcaster:
-				self.update_status_text('Replace current broadcaster account ({})'.format(
-					broadcaster.display_name
-				))
+				self.update_status_text(f'Replace current broadcaster account ({broadcaster.display_name})')
 				self.terminate_prompt(self.prompt_ident)
 				self.prompt_ident = self.get_prompt('[Y]es/[N]o> ', confirm)
 			else:
@@ -278,7 +276,7 @@ class Account(ModuleBase):
 			self.buffer_print('VOLTRON', 'Cancelling...')
 			if self.login_thread:
 				requests.get(
-					'http://localhost:{}'.format(config.OAUTH_HTTPD_PORT),
+					f'http://localhost:{config.OAUTH_HTTPD_PORT}',
 					params = { 'action': 'abort' }
 				)
 			self.prompt_ident = None

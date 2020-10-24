@@ -1,4 +1,6 @@
 EVT_CHATCOMMAND = 'CHATCOMMAND'
+EVT_CHATMESSAGE = 'CHATMESSAGE'
+EVT_TIMER = 'TIMER'
 
 class Event:
 	"""
@@ -18,3 +20,18 @@ class ChatCommandEvent(Event):
 		self.user_id = user_id
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
+
+class ChatMessageEvent(Event):
+	type = EVT_CHATMESSAGE
+	def __init__(self, message, display_name, user_id, is_mod, is_broadcaster):
+		self.message = message.strip()
+		self.display_name = display_name
+		self.user_id = user_id
+		self.is_mod = is_mod
+		self.is_broadcaster = is_broadcaster
+
+class TimerEvent(Event):
+	type = EVT_TIMER
+
+	def __init__(self):
+		pass

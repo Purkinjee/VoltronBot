@@ -1,5 +1,7 @@
 from lib.common import get_all_acccounts
 from lib.twitch_oauth import User
+from lib.TwitchAPIHelper import TwitchAPIHelper
+from lib.common import get_broadcaster
 
 class ModuleAdminCommand:
 	"""
@@ -30,6 +32,11 @@ class ModuleBase:
 		self.admin_commands = {}
 		self.voltron = voltron
 		self.event_loop = event_loop
+
+		broadcaster = get_broadcaster()
+		self.twitch_api = None
+		if broadcaster:
+			self.twitch_api = broadcaster.twitch_api
 
 		self.setup()
 
@@ -86,6 +93,9 @@ class ModuleBase:
 	def admin_command(self, trigger):
 		return self.admin_commands.get(trigger, None)
 
+	def play_audio(self, path):
+		self.event_loop.media_queue.put(('audio', path))
+
 	def select_account(self, callback):
 		account_list = self.list_accounts()
 		selected_user = None
@@ -113,7 +123,7 @@ class ModuleBase:
 		self.get_prompt('Account Number> ', selection_made)
 		return selected_user
 
-	def list_accounts(self):
+	def list_accounts(self, input=None):
 		users = get_all_acccounts()
 		count = 1
 		self.buffer_print('VOLTRON', '')

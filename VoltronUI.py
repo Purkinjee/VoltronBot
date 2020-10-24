@@ -247,6 +247,9 @@ Control-C to exit
 	def run(self):
 		self._app.run()
 
+	def reset(self):
+		self.modules = {}
+
 	def terminate_mod_prompt(self, ident):
 		"""
 		Cancel the prompt identified by ident

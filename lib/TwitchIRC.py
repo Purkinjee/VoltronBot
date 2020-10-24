@@ -7,9 +7,9 @@ import requests
 import json
 import threading
 
-from lib.twitch_oauth import twitch_login, save_oauth
+from lib.twitch_oauth import twitch_login
 from lib.common import get_broadcaster
-from base.events import ChatCommandEvent
+from base.events import ChatCommandEvent, ChatMessageEvent
 
 import config
 
@@ -362,4 +362,12 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 				is_broadcaster
 			)
 			self.event_queue.put(event)
+		message_event = ChatMessageEvent(
+			message,
+			display_name,
+			user_id,
+			is_mod,
+			is_broadcaster
+		)
+		self.event_queue.put(message_event)
 		self._ts_print("{name}: {msg}".format(name=display_name, msg=message))

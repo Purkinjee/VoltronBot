@@ -2,6 +2,7 @@ import config
 import sqlite3
 
 from datetime import datetime, timedelta
+from cryptography.fernet import Fernet
 import time
 
 import requests
@@ -87,8 +88,9 @@ class OauthTokens:
 	Class to store, manage, and refresh OAuth tokens
 	"""
 	def __init__(self, oauth_token, refresh_token, expire_time, user_id = None):
-		self._oauth_token = oauth_token
-		self._refresh_token = refresh_token
+		self.cipher = Fernet(config.FERNET_KEY)
+		self._oauth_token = self.cipher.decrypt(oauth_token).decode()
+		self._refresh_token = self.cipher.decrypt(refresh_token).decode()
 		if type(expire_time) == type(''):
 			self._expire_time = datetime.fromisoformat(expire_time)
 		else:
@@ -146,12 +148,15 @@ class OauthTokens:
 			self._refresh_token = token_data['refresh_token']
 			self._expire_time = datetime.now() + timedelta(seconds=token_data['expires_in'])
 
+			encrypt_token = self.cipher.encrypt(self._oauth_token.encode())
+			encrypt_refresh = self.cipher.encrypt(self._refresh_token.encode())
+
 			if self._user_id:
 				con, cur = get_db()
 				sql = "UPDATE oauth SET oauth_token = ?, refresh_token = ?, token_expire_time = ? WHERE id = ?"
 				cur.execute(sql,(
-					self._oauth_token,
-					self._refresh_token,
+					encrypt_token,
+					encrypt_refresh,
 					self._expire_time,
 					self._user_id
 				))

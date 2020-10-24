@@ -51,6 +51,7 @@ class VoltronBot:
 		self.stop()
 		users = get_all_acccounts()
 		broadcaster = get_broadcaster()
+		self.ui.reset()
 
 		## If no broadcaster exists the bot is not functional
 		if not broadcaster:
