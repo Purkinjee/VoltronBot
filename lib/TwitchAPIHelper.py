@@ -11,6 +11,18 @@ class TwitchAPIHelper:
 	"""
 	def __init__(self, oauth_tokens):
 		self.oauth_tokens = oauth_tokens
+		## PRODUCTION ##
+		######
+		## SET CLIENT_ID AND FERNET_KEY HERE FOR PRODUCTION
+		######
+		self.__client_id = ''
+		self.__fernet_key = ''
+
+		if hasattr(config, 'CLIENT_ID'):
+			self.__client_id = config.CLIENT_ID
+
+		if hasattr(config, 'FERNET_KEY'):
+			self.__fernet_key = config.FERNET_KEY
 
 	def get_this_user(self):
 		"""
@@ -19,8 +31,8 @@ class TwitchAPIHelper:
 		req = requests.get(
 			'https://api.twitch.tv/helix/users',
 			headers = {
-				'client-id': config.CLIENT_ID,
-				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token)
+				'client-id': self.__client_id,
+				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
 			},
 		)
 		resp = json.loads(req.text)
@@ -30,8 +42,8 @@ class TwitchAPIHelper:
 		req = requests.get(
 			'https://api.twitch.tv/helix/users',
 			headers = {
-				'client-id': config.CLIENT_ID,
-				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token)
+				'client-id': self.__client_id,
+				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
 			},
 			params = {'login': login}
 		)
@@ -44,12 +56,28 @@ class TwitchAPIHelper:
 
 		return data[0]
 
+	def get_stream(self, broadcaster_id):
+		req = requests.get(
+			'https://api.twitch.tv/helix/streams',
+			headers = {
+				'client-id': self.__client_id,
+				'Authorization': 'Bearer {}'.format(self.oauth_tokens.token(self.__fernet_key))
+			},
+			params = { 'user_id': broadcaster_id }
+		)
+		resp = json.loads(req.text)
+		data = resp.get('data', None)
+		if not data or len(data) < 1:
+			return None
+
+		return data[0]
+
 	def get_channel(self, broadcaster_id):
 		req = requests.get(
 			'https://api.twitch.tv/helix/channels',
 			headers = {
-				'client-id': config.CLIENT_ID,
-				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token)
+				'client-id': self.__client_id,
+				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
 			},
 			params = {'broadcaster_id': broadcaster_id}
 		)
@@ -58,5 +86,5 @@ class TwitchAPIHelper:
 		data = resp.get('data', None)
 		if not data or len(data) < 1:
 			return None
-			
+
 		return data[0]

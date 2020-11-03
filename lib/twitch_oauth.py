@@ -24,6 +24,17 @@ class OauthRequestHandler(http.server.BaseHTTPRequestHandler):
 			return
 		get = parse_qs(qs)
 
+		## PRODUCTION ##
+		########
+		## SET CLIENT_ID AND CLIENT SECRET HERE FOR PRODUCTION
+		########
+		client_id = ''
+		client_secret = ''
+		if hasattr(config, 'CLIENT_ID'):
+			client_id = config.CLIENT_ID
+		if hasattr(config, 'CLIENT_SECRET'):
+			client_secret = config.CLIENT_SECRET
+
 		## Check for an abort request
 		action = get.get('action', None)
 		if action and action[0] == 'abort':
@@ -58,8 +69,8 @@ class OauthRequestHandler(http.server.BaseHTTPRequestHandler):
 		## Everything looks good, so let's prepare the next request
 		## and validate everything
 		body = {
-			'client_id': config.CLIENT_ID,
-			'client_secret': config.CLIENT_SECRET,
+			'client_id': client_id,
+			'client_secret': client_secret,
 			'code': code,
 			'grant_type': 'authorization_code',
 			'redirect_uri' : 'http://localhost/'
@@ -202,6 +213,13 @@ def save_oauth(oauth_token, refresh_token, expires_in, is_broadcaster):
 	return new_user
 
 def twitch_login():
+	## PRODUCTION ##
+	########
+	## SET CLIENT ID HERE FOR PRODUCTION
+	########
+	client_id = ''
+	if hasattr(config, 'CLIENT_ID'):
+		client_id = client_id
 	## Create a random state string and salt it with mayo (for now)
 	state_id = randint(0,1000000)
 	hash_str = "%s%s" % ('mayo', state_id)
@@ -216,7 +234,7 @@ def twitch_login():
 		'&state={state}'
 		'&force_verify=true'
 	).format(
-		client_id = config.CLIENT_ID,
+		client_id = client_id,
 		state = md5,
 		scope = config.SCOPES.replace(' ', '%20')
 	)

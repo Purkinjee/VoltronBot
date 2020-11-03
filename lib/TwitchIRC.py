@@ -7,7 +7,6 @@ import requests
 import json
 import threading
 
-from lib.twitch_oauth import twitch_login
 from lib.common import get_broadcaster
 from base.events import ChatCommandEvent, ChatMessageEvent
 
@@ -19,6 +18,14 @@ class IRCBase:
 	This is the main thread and will manage all other threads.
 	"""
 	def __init__(self, buffer_queue, user, broadcaster):
+		## PRODUCTION ##
+		########
+		## SET FERNET KEY HERE FOR PRODUCTION
+		########
+		self.__fernet_key = ''
+
+		if hasattr(config, 'FERNET_KEY'):
+			self.__fernet_key = config.FERNET_KEY
 		self.buffer_queue = buffer_queue
 		self.user = user
 		self.broadcaster = broadcaster
@@ -69,7 +76,7 @@ class IRCBase:
 		"""
 		self._ts_print("Connecting...", newline=False)
 		self.irc.connect(('irc.chat.twitch.tv', 6667))
-		self.irc.send("PASS oauth:{oauth}\r\n".format(oauth=self.user.oauth_tokens.token).encode())
+		self.irc.send("PASS oauth:{oauth}\r\n".format(oauth=self.user.oauth_tokens.token(self.__fernet_key)).encode())
 		self.irc.send("NICK {nick}\r\n".format(nick=self.user.user_name).encode())
 		self.irc.send("CAP REQ :twitch.tv/tags twitch.tv/commands\r\n".encode())
 

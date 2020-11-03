@@ -8,6 +8,7 @@ import sys
 import queue
 import os
 import json
+import config
 from importlib import import_module
 
 from lib.TwitchIRC import BroadcasterIRC, BotIRC
@@ -24,6 +25,8 @@ class VoltronBot:
 	All instanced classes and threads are managed in this class.
 	"""
 	def __init__(self):
+		if not os.path.isdir(config.APP_DIRECTORY):
+			os.makedirs(config.APP_DIRECTORY)
 		self.buffer_queue = queue.Queue()
 		self.event_queue = queue.Queue()
 

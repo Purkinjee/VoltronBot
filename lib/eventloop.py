@@ -1,12 +1,56 @@
 import threading
 import os
+import sys
 import time
 from importlib import import_module
 from queue import Queue
 from playsound import playsound
 
-from base.events import Event, TimerEvent
-from lib.common import get_db
+from base.events import Event, TimerEvent, StreamStatusEvent
+from lib.common import get_db, get_broadcaster
+from lib.TwitchAPIHelper import TwitchAPIHelper
+import config
+
+class BroadcastStatusThread(threading.Thread):
+	def __init__(self, event_queue):
+		threading.Thread.__init__(self)
+
+		self.event_queue = event_queue
+		self.last_check = 0
+		self._keep_listening = True
+
+		self.broadcast_id = None
+
+	def run(self):
+		while self._keep_listening:
+			if time.time() - self.last_check > 300:
+				broadcaster = get_broadcaster()
+				if broadcaster:
+					api = TwitchAPIHelper(broadcaster.oauth_tokens)
+					stream = api.get_stream(broadcaster.twitch_user_id)
+					if stream:
+						if not self.broadcast_id or self.last_check == 0:
+							self.event_queue.put(StreamStatusEvent(
+								stream_id = stream['id'],
+								title = stream['title'],
+								started_at = stream['started_at'],
+								viewer_count = stream['viewer_count']
+							))
+
+						self.broadcast_id = stream['id']
+
+					else:
+						if self.broadcast_id or self.last_check == 0:
+							self.event_queue.put(StreamStatusEvent())
+
+						self.broadcast_id = None
+
+				self.last_check = time.time()
+
+			time.sleep(1)
+
+	def stop(self):
+		self._keep_listening = False
 
 class TimerEventThread(threading.Thread):
 	def __init__(self, event_queue):
@@ -58,7 +102,9 @@ class EventLoop(threading.Thread):
 		self.registered_listeners = {
 			'CHATCOMMAND' : [],
 			'CHATMESSAGE' : [],
-			'TIMER' : []
+			'TIMER' : [],
+			'STREAM_STATUS': [],
+			'FIRST_MESSAGE': []
 		}
 
 		self._keep_listening = True
@@ -71,6 +117,24 @@ class EventLoop(threading.Thread):
 				continue
 			mod_instance = import_module('CoreModules.{}'.format(mod)).VoltronModule(self, self.voltron)
 			self.modules.append(mod_instance)
+
+		mod_dir = config.APP_DIRECTORY + '\\Modules'
+		#manager = PluginManager()
+		#manager.setPluginPlaces([mod_dir])
+		#manager.collectPlugins()
+
+		#for plugin in manager.getAllPlugins():
+		#	self.voltron.buffer_queue.put(('VOLTRON', plugin.plugin_object.try_hard()))
+		# sys.path.append(mod_dir)
+		# if not os.path.isdir(mod_dir):
+		# 	os.makedirs(mod_dir)
+		#
+		# mod_dirs = next(os.walk(mod_dir))[1]
+		# for mod in mod_dirs:
+		# 	self.voltron.buffer_queue.put(('VOLTRON', f'{mod_dir}\\{mod}\\'))
+		# 	mod_import = import_module(f'{mod}.poop').Poop
+		# 	poop = mod_import()
+		# 	self.voltron.buffer_queue.put(('VOLTRON', poop.try_hard()))
 
 		core_mods = next(os.walk('./Modules'))[1]
 		for mod in core_mods:
@@ -101,6 +165,9 @@ class EventLoop(threading.Thread):
 		self.media_thread = MediaThread(self.media_queue)
 		self.media_thread.start()
 
+		self.live_thread = BroadcastStatusThread(self.event_queue)
+		self.live_thread.start()
+
 		self.listen()
 
 	def register_event(self, event_type, callback, event_params):
@@ -126,3 +193,6 @@ class EventLoop(threading.Thread):
 		self.media_queue.put('SHUTDOWN')
 		#self.media_thread.stop()
 		self.media_thread.join()
+
+		self.live_thread.stop()
+		self.live_thread.join()

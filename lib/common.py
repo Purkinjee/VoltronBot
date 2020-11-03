@@ -88,9 +88,19 @@ class OauthTokens:
 	Class to store, manage, and refresh OAuth tokens
 	"""
 	def __init__(self, oauth_token, refresh_token, expire_time, user_id = None):
-		self.cipher = Fernet(config.FERNET_KEY)
-		self._oauth_token = self.cipher.decrypt(oauth_token).decode()
-		self._refresh_token = self.cipher.decrypt(refresh_token).decode()
+		## PRODUCTION ##
+		########
+		## SET CLIENT_ID AND CLIENT SECRET HERE FOR PRODUCTION
+		########
+		self.__client_id = ''
+		self.__client_secret = ''
+
+		if hasattr(config, 'CLIENT_ID'):
+			self.__client_id = config.CLIENT_ID
+		if hasattr(config, 'CLIENT_SECRET'):
+			self.__client_secret = config.CLIENT_SECRET
+		self._oauth_token = oauth_token
+		self._refresh_token = refresh_token
 		if type(expire_time) == type(''):
 			self._expire_time = datetime.fromisoformat(expire_time)
 		else:
@@ -98,19 +108,22 @@ class OauthTokens:
 		self._last_validation_time = 0
 		self._user_id = user_id
 
-	@property
-	def token(self):
+	def token(self, fernet_key):
 		if (time.time() - self._last_validation_time) > 600: # 10 minutes
-			self.validate_auth()
+			self.validate_auth(fernet_key)
 
 		tte = (self._expire_time - datetime.now()).total_seconds()
 		if tte < 1800: # 30 minutes
-			self.refresh_auth()
-		return self._oauth_token
+			self.refresh_auth(fernet_key)
 
-	def validate_auth(self):
+		cipher = Fernet(fernet_key)
+		return cipher.decrypt(self._oauth_token).decode()
+
+	def validate_auth(self, fernet_key):
+		cipher = Fernet(fernet_key)
+		token = cipher.decrypt(self._oauth_token).decode()
 		headers = {
-			"Authorization" : "OAuth {access_token}".format(access_token=self._oauth_token)
+			"Authorization" : "OAuth {access_token}".format(access_token=token)
 		}
 		req = requests.get(
 			'https://id.twitch.tv/oauth2/validate',
@@ -120,21 +133,23 @@ class OauthTokens:
 		if (
 			resp
 			and 'client_id' in resp
-			and resp['client_id'] == config.CLIENT_ID
+			and resp['client_id'] == self.__client_id
 			and 'expires_in' in resp
 			and resp['expires_in'] > 1800
 		):
 			self._last_validation_time = time.time()
 			return True
 		else:
-			return self.refresh_auth()
+			return self.refresh_auth(fernet_key)
 
-	def refresh_auth(self):
+	def refresh_auth(self, fernet_key):
+		cipher = Fernet(fernet_key)
+		refresh_token = cipher.decrypt(self._refresh_token).decode()
 		body = {
-			'client_id': config.CLIENT_ID,
-			'client_secret': config.CLIENT_SECRET,
+			'client_id': self.__client_id,
+			'client_secret': self.__client_secret,
 			'grant_type': 'refresh_token',
-			'refresh_token': self._refresh_token,
+			'refresh_token': refresh_token,
 			'scope': config.SCOPES
 		}
 		req = requests.post(
@@ -144,12 +159,14 @@ class OauthTokens:
 		token_data = json.loads(req.text)
 
 		if 'access_token' in token_data and 'refresh_token' in token_data:
-			self._oauth_token = token_data['access_token']
-			self._refresh_token = token_data['refresh_token']
+			#self._oauth_token = token_data['access_token']
+			#self._refresh_token = token_data['refresh_token']
 			self._expire_time = datetime.now() + timedelta(seconds=token_data['expires_in'])
 
-			encrypt_token = self.cipher.encrypt(self._oauth_token.encode())
-			encrypt_refresh = self.cipher.encrypt(self._refresh_token.encode())
+			encrypt_token = cipher.encrypt(self._oauth_token.encode())
+			encrypt_refresh = cipher.encrypt(self._refresh_token.encode())
+			self._oauth_token = encrypt_token
+			self._refresh_token = encrypt_refresh
 
 			if self._user_id:
 				con, cur = get_db()
@@ -178,6 +195,7 @@ class User:
 	def __init__(self, user_id):
 		self.id = user_id
 		self.refresh()
+		self.oauth_token = None
 		self.twitch_api = TwitchAPIHelper(self.oauth_tokens)
 
 	def update(self):
