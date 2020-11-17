@@ -120,11 +120,18 @@ def save_oauth(oauth_token, refresh_token, expires_in, is_broadcaster):
 		expires_in (int): Number of seconds until oauth_token expires
 		is_broadcaster (bool): True if this is the broadcaster account
 	"""
+	## PRODUCTION ##
+	########
+	## SET FERNET_KEY HERE FOR PRODUCTION
+	########
+	fernet_key = ''
+	if hasattr(config, 'FERNET_KEY'):
+		fernet_key = config.FERNET_KEY
 	## Calcuate the exact expire time based off how many seconds the token
 	## is valid. Fetch all of the user information from the Twitch API
 	## and save it to our database
 	expire_time = datetime.now() + timedelta(seconds=expires_in)
-	cipher = Fernet(config.FERNET_KEY)
+	cipher = Fernet(fernet_key)
 	oauth_token = cipher.encrypt(oauth_token.encode())
 	refresh_token = cipher.encrypt(refresh_token.encode())
 
@@ -165,6 +172,7 @@ def save_oauth(oauth_token, refresh_token, expires_in, is_broadcaster):
 	cur.execute(sql)
 	default = cur.fetchone()
 	is_default = 0 if default else 1
+
 	if existing:
 		sql = "UPDATE oauth SET \
 		user_name = ?, \
@@ -173,7 +181,7 @@ def save_oauth(oauth_token, refresh_token, expires_in, is_broadcaster):
 		oauth_token = ?, \
 		refresh_token = ?, \
 		token_expire_time = ?, \
-		is_broadcaster = ? \
+		is_broadcaster = ?, \
 		is_default = ? \
 		WHERE id = ? \
 		"
@@ -219,7 +227,7 @@ def twitch_login():
 	########
 	client_id = ''
 	if hasattr(config, 'CLIENT_ID'):
-		client_id = client_id
+		client_id = config.CLIENT_ID
 	## Create a random state string and salt it with mayo (for now)
 	state_id = randint(0,1000000)
 	hash_str = "%s%s" % ('mayo', state_id)
