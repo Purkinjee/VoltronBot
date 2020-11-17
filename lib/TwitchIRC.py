@@ -158,14 +158,14 @@ class IRCBase:
 	def _handle_response(self, resp):
 		## If Twitch pinged, respond with a pong and record a successful exchange
 		if re.search(r"^PING", resp):
-			self._ts_print("PING RECV")
+			#self._ts_print("PING RECV")
 			self._last_ping = time.time()
 			self._pong()
 			return True
 
 		## If we got a pong, log the time and move on
 		if re.search(r"^(:tmi\.twitch\.tv )?PONG", resp):
-			self._ts_print("PONG RECV")
+			#self._ts_print("PONG RECV")
 			self._last_pong = time.time()
 			# Use default socket timeout since we know connection is alive
 			self.irc.settimeout(config.DEFAULT_SOCKET_TIMEOUT)
@@ -279,7 +279,7 @@ class IRCBase:
 		self._last_pong = time.time()
 		## Use default socket timeout since we know connection is alive
 		self.irc.settimeout(config.DEFAULT_SOCKET_TIMEOUT)
-		self._ts_print("PONG SEND")
+		#self._ts_print("PONG SEND")
 
 	def _ping(self):
 		"""
@@ -288,7 +288,7 @@ class IRCBase:
 		## Theoretically we should never have to do this
 		## But twitch be twitchy
 		self.irc.send("PING :tmi.twitch.tv\r\n".encode())
-		self._ts_print("PING SEND")
+		#self._ts_print("PING SEND")
 		self._last_ping = time.time()
 
 	def _check_alive(self):
@@ -377,4 +377,4 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 			is_broadcaster
 		)
 		self.event_queue.put(message_event)
-		self._ts_print("{name}: {msg}".format(name=display_name, msg=message))
+		#self._ts_print("{name}: {msg}".format(name=display_name, msg=message))

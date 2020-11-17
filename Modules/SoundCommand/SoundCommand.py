@@ -12,6 +12,9 @@ class SoundCommand(ModuleBase):
 		self._commands = self.get_module_data()
 		self.default_cooldown = 10
 
+		if not os.path.isdir(self.media_directory):
+			os.makedirs(self.media_directory)
+
 		if not 'commands' in self._commands:
 			self._commands['commands'] = {}
 
@@ -64,13 +67,6 @@ class SoundCommand(ModuleBase):
 			description = 'Set cooldown for command in seconds.'
 		))
 
-		self.register_admin_command(ModuleAdminCommand(
-			'directory',
-			self._set_directory,
-			usage = f'{self.module_name} directory <full path>',
-			description = 'Set directory for sound files.'
-		))
-
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
@@ -91,10 +87,7 @@ class SoundCommand(ModuleBase):
 			self.send_chat_message(f'Command !{event.command} is on cooldown ({remaining}s)')
 			return
 
-		sound_path = "{directory}\\{sound_file}".format(
-			directory = self.sound_dir,
-			sound_file = command['sound_file']
-		)
+		sound_path = f"{self.media_directory}\\{command['sound_file']}"
 
 		if not os.path.isfile(sound_path):
 			self.buffer_print('ERR', f'{sound_path} does not exist')
@@ -223,28 +216,9 @@ class SoundCommand(ModuleBase):
 		self._commands['commands'][command]['cooldown'] = cooldown
 		self.buffer_print('VOLTRON', f'Cooldown for !{command} set to {cooldown}s')
 
-	def _set_directory(self, input, command):
-		if not input:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current directory: {self.sound_dir}')
-			return
-
-		is_dir = os.path.isdir(input)
-		if not is_dir:
-			self.buffer_print('VOLTRON', f'Invalid Directory: {input}')
-			return
-
-		self._commands['sound_dir'] = input
-		self.buffer_print('VOLTRON', f'Audio directory set to {input}')
-
 	@property
-	def sound_dir(self):
-		if not 'sound_dir' in self._commands:
-			return "{profile}\\Voltron\\Audio".format(
-				profile=os.environ['USERPROFILE']
-			)
-		else:
-			return self._commands['sound_dir']
+	def media_directory(self):
+		return self.data_directory + '\\Media'
 
 
 	def shutdown(self):

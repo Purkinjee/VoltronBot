@@ -108,6 +108,42 @@ class VoltronBot:
 		else:
 			return {}
 
+	def get_counter(self, counter_name):
+		con, cur = get_db()
+
+		sql = "SELECT id, value FROM counters WHERE counter_name = ?"
+		cur.execute(sql, (counter_name, ))
+		res = cur.fetchone()
+
+		con.commit()
+		con.close()
+
+		if not res:
+			return None
+		else:
+			return res['value']
+
+	def get_all_counters(self):
+		con, cur = get_db()
+
+		sql = 'SELECT * FROM counters'
+		cur.execute(sql)
+		res = cur.fetchall()
+
+		con.commit()
+		con.close()
+
+		return res
+
+	def set_counter(self, counter_name, value):
+		con, cur = get_db()
+
+		sql = "UPDATE counters SET value = ? WHERE counter_name = ?"
+		cur.execute(sql, (value, counter_name))
+
+		con.commit()
+		con.close()
+
 	def save_module_data(self, module, data):
 		"""
 		Save data to the DB for the specified module.

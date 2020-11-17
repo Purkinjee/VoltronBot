@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from cryptography.fernet import Fernet
 import time
+import os
 
 import requests
 import json
@@ -19,6 +20,27 @@ def debug(message):
 	"""
 	if config.DEBUG:
 		print('DEBUG: ', message)
+
+def get_module_directory(module = None):
+	module_dir = config.APP_DIRECTORY + '\\Modules'
+	if module:
+		module_dir += f'\\Modules\\{module}'
+
+	if not os.path.isdir(module_dir):
+		os.makedirs(module_dir)
+
+	return module_dir
+
+def get_module_data_directory(module = None):
+	data_dir = config.APP_DIRECTORY + '\\ModuleData'
+
+	if module:
+		data_dir += f'\\{module}'
+
+	if not os.path.isdir(data_dir):
+		os.makedirs(data_dir)
+
+	return data_dir
 
 def get_db():
 	"""
@@ -163,8 +185,8 @@ class OauthTokens:
 			#self._refresh_token = token_data['refresh_token']
 			self._expire_time = datetime.now() + timedelta(seconds=token_data['expires_in'])
 
-			encrypt_token = cipher.encrypt(self._oauth_token.encode())
-			encrypt_refresh = cipher.encrypt(self._refresh_token.encode())
+			encrypt_token = cipher.encrypt(token_data['access_token'].encode())
+			encrypt_refresh = cipher.encrypt(token_data['refresh_token'].encode())
 			self._oauth_token = encrypt_token
 			self._refresh_token = encrypt_refresh
 
@@ -194,8 +216,8 @@ class User:
 	"""
 	def __init__(self, user_id):
 		self.id = user_id
+		self.oauth_tokens = None
 		self.refresh()
-		self.oauth_token = None
 		self.twitch_api = TwitchAPIHelper(self.oauth_tokens)
 
 	def update(self):

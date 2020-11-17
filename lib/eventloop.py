@@ -7,7 +7,7 @@ from queue import Queue
 from playsound import playsound
 
 from base.events import Event, TimerEvent, StreamStatusEvent
-from lib.common import get_db, get_broadcaster
+from lib.common import get_db, get_broadcaster, get_module_directory
 from lib.TwitchAPIHelper import TwitchAPIHelper
 import config
 
@@ -118,7 +118,8 @@ class EventLoop(threading.Thread):
 			mod_instance = import_module('CoreModules.{}'.format(mod)).VoltronModule(self, self.voltron)
 			self.modules.append(mod_instance)
 
-		mod_dir = config.APP_DIRECTORY + '\\Modules'
+		#mod_dir = config.APP_DIRECTORY + '\\Modules'
+		mod_dir = get_module_directory()
 		#manager = PluginManager()
 		#manager.setPluginPlaces([mod_dir])
 		#manager.collectPlugins()

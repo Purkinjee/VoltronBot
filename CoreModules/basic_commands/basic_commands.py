@@ -62,6 +62,20 @@ class BasicCommands(ModuleBase):
 			description = 'Set the global and user cooldown for !<command> in seconds.'
 		))
 
+		self.register_admin_command(ModuleAdminCommand(
+			'counters',
+			self.list_counters,
+			usage = f'{self.module_name} counters',
+			description = 'List all counters'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'set_counter',
+			self._set_counter,
+			usage = f'{self.module_name} set_counter <counter_name> <value>',
+			description = 'Set value of a counter'
+		))
+
 		#for command in self._commands:
 		#	self._commands[command]['runtime'] = {'global': 0, 'user': {}}
 
@@ -104,7 +118,7 @@ class BasicCommands(ModuleBase):
 				return
 
 			for response in self._commands[event.command]['response']:
-				self.send_chat_message(response, twitch_id)
+				self.send_chat_message(response, twitch_id=twitch_id, event=event)
 			self._commands[event.command]['runtime']['global'] = time.time()
 			self._commands[event.command]['runtime']['user'][event.user_id] = time.time()
 
@@ -244,6 +258,31 @@ class BasicCommands(ModuleBase):
 		self.buffer_print('VOLTRON', f'Available commands in {self.module_name} module:')
 		self._print_commands()
 		self.buffer_print('VOLTRON', '')
+
+	def list_counters(self, input, command):
+		self.buffer_print('VOLTRON', 'All counters:')
+		counters = self.get_all_counters()
+
+		for counter in counters:
+			self.buffer_print('VOLTRON', f"  {counter['counter_name']}: {counter['value']}")
+
+	def _set_counter(self, input, command):
+		match = re.search(r'^([^ ]+) ([\d]+)$', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		counter_name = match.group(1)
+		value = int(match.group(2))
+
+		counter = self.get_counter(counter_name)
+		if not counter:
+			self.buffer_print('VOLTRON', f'Counter does not exsit: {counter_name}')
+			return
+
+		self.set_counter(counter_name, value)
+		self.buffer_print('VOLTRON', f'Counter {counter_name} set to {value}')
+
 
 	def command_details(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)

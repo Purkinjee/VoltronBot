@@ -1,7 +1,8 @@
 from lib.common import get_all_acccounts
 from lib.twitch_oauth import User
 from lib.TwitchAPIHelper import TwitchAPIHelper
-from lib.common import get_broadcaster
+from lib.common import get_broadcaster, get_module_data_directory
+from lib.ChatMessageParser import ChatMessageParser
 
 class ModuleAdminCommand:
 	"""
@@ -66,8 +67,10 @@ class ModuleBase:
 	def event_listen(self, event_type, callback, event_params=None):
 		self.event_loop.register_event(event_type, callback, event_params)
 
-	def send_chat_message(self, message, twitch_id = None):
-		self.voltron.send_chat_message(message, twitch_id)
+	def send_chat_message(self, message, twitch_id=None, event=None):
+		parser = ChatMessageParser(message, event)
+		parsed = parser.parse()
+		self.voltron.send_chat_message(parsed, twitch_id)
 
 	def get_prompt(self, prompt=None, callback=None):
 		return self.voltron.ui.mod_prompt(prompt, callback)
@@ -80,6 +83,15 @@ class ModuleBase:
 
 	def buffer_print(self, type, msg):
 		self.voltron.buffer_queue.put((type, msg))
+
+	def get_counter(self, counter_name):
+		return self.voltron.get_counter(counter_name)
+
+	def get_all_counters(self):
+		return self.voltron.get_all_counters()
+
+	def set_counter(self, counter_name, value):
+		self.voltron.set_counter(counter_name, value)
 
 	def register_admin_command(self, command):
 		if command.trigger in self.admin_commands:
@@ -141,3 +153,9 @@ class ModuleBase:
 			count += 1
 		self.buffer_print('VOLTRON', '')
 		return account_list
+
+	@property
+	def data_directory(self):
+		if not hasattr(self, 'module_name'):
+			return None
+		return get_module_data_directory(self.module_name)
