@@ -46,7 +46,7 @@ def get_db():
 	"""
 	Get a connection and cursor to the SQLite database and return in a tuple
 	"""
-	con = sqlite3.connect('data.db')
+	con = sqlite3.connect(config.DB)
 	con.row_factory = _dict_factory
 	cur = con.cursor()
 
@@ -147,10 +147,13 @@ class OauthTokens:
 		headers = {
 			"Authorization" : "OAuth {access_token}".format(access_token=token)
 		}
-		req = requests.get(
-			'https://id.twitch.tv/oauth2/validate',
-			headers = headers
-		)
+		try:
+			req = requests.get(
+				'https://id.twitch.tv/oauth2/validate',
+				headers = headers
+			)
+		except requests.exceptions.ConnectionError:
+			return False
 		resp = json.loads(req.text)
 		if (
 			resp
@@ -174,10 +177,14 @@ class OauthTokens:
 			'refresh_token': refresh_token,
 			'scope': config.SCOPES
 		}
-		req = requests.post(
-			'https://id.twitch.tv/oauth2/token',
-			data=body
-		)
+		try:
+			req = requests.post(
+				'https://id.twitch.tv/oauth2/token',
+				data=body
+			)
+		except requests.exceptions.ConnectionError:
+			return False
+
 		token_data = json.loads(req.text)
 
 		if 'access_token' in token_data and 'refresh_token' in token_data:

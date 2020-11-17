@@ -23,7 +23,7 @@ class BroadcastStatusThread(threading.Thread):
 
 	def run(self):
 		while self._keep_listening:
-			if time.time() - self.last_check > 300:
+			if time.time() - self.last_check > 30:
 				broadcaster = get_broadcaster()
 				if broadcaster:
 					api = TwitchAPIHelper(broadcaster.oauth_tokens)

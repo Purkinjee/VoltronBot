@@ -28,25 +28,31 @@ class TwitchAPIHelper:
 		"""
 		Get Twitch user information for the holder of self.oauth_tokens
 		"""
-		req = requests.get(
-			'https://api.twitch.tv/helix/users',
-			headers = {
-				'client-id': self.__client_id,
-				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
-			},
-		)
+		try:
+			req = requests.get(
+				'https://api.twitch.tv/helix/users',
+				headers = {
+					'client-id': self.__client_id,
+					'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
+				},
+			)
+		except requests.exceptions.ConnectionError:
+			return False
 		resp = json.loads(req.text)
 		return resp
 
 	def get_user(self, login):
-		req = requests.get(
-			'https://api.twitch.tv/helix/users',
-			headers = {
-				'client-id': self.__client_id,
-				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
-			},
-			params = {'login': login}
-		)
+		try:
+			req = requests.get(
+				'https://api.twitch.tv/helix/users',
+				headers = {
+					'client-id': self.__client_id,
+					'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
+				},
+				params = {'login': login}
+			)
+		except requests.exceptions.ConnectionError:
+			return False
 
 		resp = json.loads(req.text)
 
@@ -57,14 +63,17 @@ class TwitchAPIHelper:
 		return data[0]
 
 	def get_stream(self, broadcaster_id):
-		req = requests.get(
-			'https://api.twitch.tv/helix/streams',
-			headers = {
-				'client-id': self.__client_id,
-				'Authorization': 'Bearer {}'.format(self.oauth_tokens.token(self.__fernet_key))
-			},
-			params = { 'user_id': broadcaster_id }
-		)
+		try:
+			req = requests.get(
+				'https://api.twitch.tv/helix/streams',
+				headers = {
+					'client-id': self.__client_id,
+					'Authorization': 'Bearer {}'.format(self.oauth_tokens.token(self.__fernet_key))
+				},
+				params = { 'user_id': broadcaster_id }
+			)
+		except requests.exceptions.ConnectionError:
+			return False
 		resp = json.loads(req.text)
 		data = resp.get('data', None)
 		if not data or len(data) < 1:
@@ -73,14 +82,17 @@ class TwitchAPIHelper:
 		return data[0]
 
 	def get_channel(self, broadcaster_id):
-		req = requests.get(
-			'https://api.twitch.tv/helix/channels',
-			headers = {
-				'client-id': self.__client_id,
-				'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
-			},
-			params = {'broadcaster_id': broadcaster_id}
-		)
+		try:
+			req = requests.get(
+				'https://api.twitch.tv/helix/channels',
+				headers = {
+					'client-id': self.__client_id,
+					'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key))
+				},
+				params = {'broadcaster_id': broadcaster_id}
+			)
+		except requests.exceptions.ConnectionError:
+			return False
 
 		resp = json.loads(req.text)
 		data = resp.get('data', None)

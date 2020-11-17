@@ -4,6 +4,7 @@ from base.events import EVT_CHATMESSAGE, EVT_STREAM_STATUS, FirstMessageEvent
 
 class EntranceEvents(ModuleBase):
 	module_name = 'entrance_events'
+	configurable = False
 	def setup(self):
 		self._users = self.get_module_data()
 		if not 'active' in self._users:

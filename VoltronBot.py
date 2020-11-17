@@ -10,6 +10,7 @@ import os
 import json
 import config
 from importlib import import_module
+import asyncio
 
 from lib.TwitchIRC import BroadcasterIRC, BotIRC
 from VoltronUI import VoltronUI

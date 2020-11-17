@@ -387,6 +387,8 @@ Control-C to exit
 			## Show available modules
 			help_str = "Available Modules:\n"
 			for module_name in self.modules:
+				if hasattr(self.modules[module_name], 'configurable') and not self.modules[module_name].configurable:
+					continue
 				help_str += "    {module_name}\n".format(
 					module_name = module_name
 				)

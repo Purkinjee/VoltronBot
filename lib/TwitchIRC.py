@@ -11,6 +11,7 @@ from lib.common import get_broadcaster
 from base.events import ChatCommandEvent, ChatMessageEvent
 
 import config
+from Version import VERSION
 
 class IRCBase:
 	"""
@@ -29,10 +30,11 @@ class IRCBase:
 		self.buffer_queue = buffer_queue
 		self.user = user
 		self.broadcaster = broadcaster
-		self._ts_print("Starting Voltron Bot")
-		self._ts_print("Press Ctrl-C to exit")
+		#self._ts_print("Starting Voltron Bot")
+		#self._ts_print("Press Ctrl-C to exit")
 		self.keep_listening = True
 		self.reconnecting = False
+		self.reconnect_attempts = 0
 
 		## Use these variables to detmine uptime for the bot
 		## as well as time the socket has been connected
@@ -43,7 +45,7 @@ class IRCBase:
 		## connection with a successful PING/PONG
 		self.irc = socket.socket()
 		self.irc.settimeout(1)
-		self.connect()
+		#self.connect()
 
 		## Last ping and pong times. Set these to 0 so a ping will be
 		## sent immediately after connecting
@@ -51,9 +53,9 @@ class IRCBase:
 		self._last_pong = 0
 
 		self.channel_map = {}
-		self.join_channels()
+		#self.join_channels()
 
-		self._ts_print("Voltron bot is fully operational!")
+		#self._ts_print("Voltron bot is fully operational!")
 
 	def message_received(self, display_name, user_id, is_mod, is_broadcaster, message):
 		"""
@@ -75,14 +77,32 @@ class IRCBase:
 		Called when class TwitchIRC class is initialized or when the client disconnects
 		"""
 		self._ts_print("Connecting...", newline=False)
-		self.irc.connect(('irc.chat.twitch.tv', 6667))
+		try:
+			self.irc.connect(('irc.chat.twitch.tv', 6667))
+		except:
+			self.reconnect_attempts += 1
+			reconnect_timeout = 10
+			if self.reconnect_attempts > 15:
+				reconnect_timeout = 120
+			if self.reconnect_attempts > 10:
+				reconnect_timeout = 60
+			if self.reconnect_attempts > 5:
+				reconnect_timeout = 30
+			self._ts_print(f"Connection Failed. Retrying in {reconnect_timeout} seconds (Attempt {self.reconnect_attempts})")
+			time.sleep(reconnect_timeout)
+			self.connect()
+			return
+
 		self.irc.send("PASS oauth:{oauth}\r\n".format(oauth=self.user.oauth_tokens.token(self.__fernet_key)).encode())
 		self.irc.send("NICK {nick}\r\n".format(nick=self.user.user_name).encode())
 		self.irc.send("CAP REQ :twitch.tv/tags twitch.tv/commands\r\n".encode())
 
 		## Update the socket time as we just connected
 		self.socket_time = time.time()
-		self._ts_print("done", ts=False)
+		self._last_ping = 0
+		self._last_pong = 0
+		self.reconnect_attempts = 0
+		self._ts_print("Connected!", ts=False)
 
 	def reconnect(self):
 		"""
@@ -107,7 +127,7 @@ class IRCBase:
 		self._ts_print("Joining channel #{}...".format(self.broadcaster.user_name), newline=False)
 		self.irc.send("JOIN #{channel}\r\n".format(channel=self.broadcaster.user_name).encode())
 		self.channel_map[self.broadcaster.user_name] = int(self.broadcaster.twitch_user_id)
-		self._ts_print('done', ts=False)
+		self._ts_print('Joined!', ts=False)
 
 		output_str = "{user} successfully joined #{channel}".format(
 			user = self.user.display_name,
@@ -215,7 +235,7 @@ class IRCBase:
 			if test_match and (is_broadcaster or is_mod):
 				t_str = self._format_seconds(time.time() - self.start_time)
 				s_str = self._format_seconds(time.time() - self.socket_time)
-				msg = "has been watching you for %s (%s on this socket)" % (t_str, s_str)
+				msg = f"VoltronBot {VERSION} has been alive for {t_str}"
 				self.send_message(msg, action=True)
 
 			## Remove bullshit ASCI characters that will piss off the database
@@ -296,18 +316,19 @@ class IRCBase:
 		Check if the Twitch connection is active
 		Call reconnect() if something is sketchy
 		"""
+		## If we sent a PING and it's been more than 2 seconds without a PONG
+		## assume the connection is dead and reconnect
+		if (self._last_ping - self._last_pong) > 2:
+			self._ts_print("Ping timed out")
+			self.reconnect()
 		## If we havent had a successful PING/PONG exchange in the last
 		## 400 seconds, initate a PING
-		if (time.time() - self._last_pong) > 400:
+		elif (time.time() - self._last_pong) > 400:
 			self._ts_print("Checking connection")
 			## Set socket timeout to 1 second because something seems to be off
 			self.irc.settimeout(1)
 			self._ping()
-		## If we sent a PING and it's been more than 2 seconds without a PONG
-		## assume the connection is dead and reconnect
-		elif (self._last_pong - self._last_ping) > 2:
-			self._ts_print("Ping timed out")
-			self.reconnect()
+
 
 	def disconnect(self):
 		"""
@@ -344,6 +365,8 @@ class BotIRC(threading.Thread, IRCBase):
 		IRCBase.__init__(self, buffer_queue, user, broadcaster)
 
 	def run(self):
+		self.connect()
+		self.join_channels()
 		self.listen()
 
 class BroadcasterIRC(threading.Thread, IRCBase):
@@ -353,6 +376,8 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 		self.event_queue = event_queue
 
 	def run(self):
+		self.connect()
+		self.join_channels()
 		self.listen()
 
 	def message_received(self, display_name, user_id, is_mod, is_broadcaster, message):

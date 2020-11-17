@@ -67,6 +67,13 @@ class SoundCommand(ModuleBase):
 			description = 'Set cooldown for command in seconds.'
 		))
 
+		self.register_admin_command(ModuleAdminCommand(
+			'dir',
+			self._show_directory,
+			usage = f'{self.module_name} dir',
+			description = 'Show media directory for audio files'
+		))
+
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
@@ -215,6 +222,10 @@ class SoundCommand(ModuleBase):
 
 		self._commands['commands'][command]['cooldown'] = cooldown
 		self.buffer_print('VOLTRON', f'Cooldown for !{command} set to {cooldown}s')
+
+	def _show_directory(self, input, command):
+		self.buffer_print('VOLTRON', 'Media Directory:')
+		self.buffer_print('VOLTRON', self.media_directory)
 
 	@property
 	def media_directory(self):
