@@ -135,7 +135,7 @@ class ModuleBase:
 		self.get_prompt('Account Number> ', selection_made)
 		return selected_user
 
-	def list_accounts(self, input=None):
+	def list_accounts(self, input=None, command=None):
 		users = get_all_acccounts()
 		count = 1
 		self.buffer_print('VOLTRON', '')
