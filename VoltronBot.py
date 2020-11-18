@@ -10,7 +10,7 @@ import os
 import json
 import config
 from importlib import import_module
-import asyncio
+import shutil
 
 from lib.TwitchIRC import BroadcasterIRC, BotIRC
 from VoltronUI import VoltronUI
@@ -26,8 +26,6 @@ class VoltronBot:
 	All instanced classes and threads are managed in this class.
 	"""
 	def __init__(self):
-		if not os.path.isdir(config.APP_DIRECTORY):
-			os.makedirs(config.APP_DIRECTORY)
 		self.buffer_queue = queue.Queue()
 		self.event_queue = queue.Queue()
 
@@ -187,6 +185,10 @@ class VoltronBot:
 		self.irc_map = {}
 
 if __name__ == "__main__":
+	if not os.path.isdir(config.APP_DIRECTORY):
+		os.makedirs(config.APP_DIRECTORY)
+	if not os.path.isfile(config.DB) and os.path.isfile('data/data.db'):
+		shutil.copy('data/data.db', config.DB)
 	vb = VoltronBot()
 	vb.start()
 
