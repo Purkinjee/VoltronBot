@@ -63,7 +63,6 @@ class ShoutOut(ModuleBase):
 		if match:
 			command = match.group(1)
 			self._shoutout_data['command'] = command
-			self.so_command = command
 			self.save_module_data(self._shoutout_data)
 
 			self.buffer_print('VOLTRON', f"Shoutout command changed to !{command}")
