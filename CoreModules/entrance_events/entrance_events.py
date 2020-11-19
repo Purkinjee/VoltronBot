@@ -37,6 +37,8 @@ class EntranceEvents(ModuleBase):
 					event.is_broadcaster
 				))
 				self.save_module_data(self._users)
+				if int(event.user_id) == 158126582:
+					self.send_chat_message(f'Oh hai dad. @{event.display_name}')
 
 	def shutdown(self):
 		self.save_module_data(self._users)
