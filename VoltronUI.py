@@ -18,6 +18,7 @@ import queue
 import re
 from uuid import uuid4
 import time
+from Version import VERSION
 
 DEFAULT_STATUS = 'Ready'
 DEFAULT_PROMPT = 'VoltronBot> '
@@ -164,7 +165,7 @@ Control-C to exit
 		## Create top bar
 		self.main_container = HSplit([
 			Window(content=FormattedTextControl(
-				text="VoltronBot v0.1"
+				text=f"VoltronBot v{VERSION}"
 			), height=1, style="class:title-bar"),
 
 			self.scrolling_output,
