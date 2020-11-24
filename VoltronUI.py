@@ -171,7 +171,10 @@ Control-C to exit
 
 			status_split,
 
+			#VSplit([
+			#Window(content=FormattedTextControl(text="VoltronBot>"), height=1, width=12),
 			self.prompt
+			#])
 		])
 
 		style = Style([
@@ -367,12 +370,12 @@ Control-C to exit
 
 			else:
 				## Module specified but no trigger
-				help_str = "Commands for {} module:\n".format(module)
+				help_str = f"Commands for {module} module:\n"
 				count = 0
 				this_line = "    "
 				for trigger in self.modules[module].available_admin_commands():
 					if count == 3:
-						help_str += "{}\n".format(this_line)
+						help_str += f"{this_line}\n"
 						count = 0
 						this_line = "    "
 
@@ -381,7 +384,7 @@ Control-C to exit
 
 				help_str += "{}\n".format(this_line)
 
-				help_str += "Type '? account <command>' for more help."
+				help_str += f"Type '? {module} <command>' for more help."
 			self.buffer_queue.put(("VOLTRON", '\n' + help_str + '\n'))
 		else:
 			## Show available modules

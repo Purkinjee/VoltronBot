@@ -173,7 +173,7 @@ class IRCBase:
 		## Format message appropaitely if we are sending as an ACTION
 		if action:
 			message = '\001ACTION {message} \001'.format(message=message)
-		self.irc.send("PRIVMSG #{channel} :{message}\r\n".format(channel=self.broadcaster.user_name, message=message).encode())
+		self.irc.send(f"PRIVMSG #{self.broadcaster.user_name} :{message}\r\n".encode())
 
 	def _handle_response(self, resp):
 		## If Twitch pinged, respond with a pong and record a successful exchange

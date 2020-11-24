@@ -17,7 +17,8 @@ class BasicCommands(ModuleBase):
 		self._static_commands = {
 			'addcommand': self._add_command,
 			'appendcommand': self._append_command,
-			'deletecommand': self._delete_command
+			'deletecommand': self._delete_command,
+			'c': self._list_commands,
 		}
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -76,9 +77,6 @@ class BasicCommands(ModuleBase):
 			description = 'Set value of a counter'
 		))
 
-		#for command in self._commands:
-		#	self._commands[command]['runtime'] = {'global': 0, 'user': {}}
-
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
@@ -121,6 +119,11 @@ class BasicCommands(ModuleBase):
 				self.send_chat_message(response, twitch_id=twitch_id, event=event)
 			self._commands[event.command]['runtime']['global'] = time.time()
 			self._commands[event.command]['runtime']['user'][event.user_id] = time.time()
+
+	def _list_commands(self, event):
+		commands = self.event_loop.get_all_commands(event.user_id, event.is_mod, event.is_broadcaster)
+		commands_str = ', '.join(commands['basic_commands'])
+		self.send_private_message(event.display_name, commands_str)
 
 	def _add_command(self, event):
 		if not event.is_mod:

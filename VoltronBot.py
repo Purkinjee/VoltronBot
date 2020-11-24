@@ -11,6 +11,8 @@ import json
 import config
 from importlib import import_module
 import shutil
+import glob
+import re
 
 from lib.TwitchIRC import BroadcasterIRC, BotIRC
 from VoltronUI import VoltronUI
@@ -19,6 +21,42 @@ from lib.common import get_broadcaster, get_all_acccounts, get_db
 from lib.eventloop import EventLoop
 
 THREADS = []
+
+def migrate_db():
+	con, cur = get_db()
+
+	sql = "SELECT count(name) AS name_count FROM sqlite_master WHERE type='table' AND name='version'"
+	cur.execute(sql)
+	res = cur.fetchone()
+	exists = res['name_count']
+
+	current_version = 0
+	if exists:
+		sql = "SELECT db_version FROM version"
+		cur.execute(sql)
+		v = cur.fetchone()
+		if v:
+			current_version = v['db_version']
+		else:
+			current_version = 0
+
+	migrations = glob.glob('setup/[0-9][0-9][0-9]*.sql')
+	migrations.sort()
+
+	for m in migrations:
+		match = re.search('(\d\d\d)_.+\.sql$', m)
+		version = int(match.group(1))
+		if version > current_version:
+			f = open(m)
+			sql = f.read()
+			cur.executescript(sql)
+
+			cur.execute("DELETE FROM version")
+			cur.execute("INSERT INTO version (db_version) VALUES (?)", (version, ))
+			current_version = version
+
+	con.commit()
+	con.close()
 
 class VoltronBot:
 	"""
@@ -172,6 +210,10 @@ class VoltronBot:
 		else:
 			self.irc_map[self.default_account.twitch_user_id].send_message(message)
 
+	def send_private_message(self, user_name, message, twitch_id=None):
+		## Make this work when we have a pubsub thread
+		pass
+
 	def stop(self):
 		"""
 		Stop the bot and exit
@@ -189,6 +231,7 @@ if __name__ == "__main__":
 		os.makedirs(config.APP_DIRECTORY)
 	if not os.path.isfile(config.DB) and os.path.isfile('data/data.db'):
 		shutil.copy('data/data.db', config.DB)
+	migrate_db()
 	vb = VoltronBot()
 	vb.start()
 

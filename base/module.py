@@ -72,6 +72,9 @@ class ModuleBase:
 		parsed = parser.parse()
 		self.voltron.send_chat_message(parsed, twitch_id)
 
+	def send_private_message(self, user_name, message, twitch_id=None, event=None):
+		self.voltron.send_private_message(user_name, message, twitch_id)
+
 	def get_prompt(self, prompt=None, callback=None):
 		return self.voltron.ui.mod_prompt(prompt, callback)
 
@@ -105,8 +108,11 @@ class ModuleBase:
 	def admin_command(self, trigger):
 		return self.admin_commands.get(trigger, None)
 
-	def play_audio(self, path):
-		self.event_loop.media_queue.put(('audio', path))
+	def play_audio(self, path, sound_device=None):
+		self.event_loop.media_queue.put(('audio', path, {'device': sound_device}))
+
+	def get_commands(self, twitch_id, is_mod=False, is_broadcaster=False):
+		return []
 
 	def select_account(self, callback):
 		account_list = self.list_accounts()

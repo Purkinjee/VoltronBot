@@ -35,16 +35,21 @@ class ModuleManager(ModuleBase):
 
 		if not res:
 			self.buffer_print('VOLTRON', f'Module not found: {module_name}')
-		else:
-			enabled = not res['enabled']
-			sql = "UPDATE modules SET enabled = ? WHERE id = ?"
-			cur.execute(sql, (enabled, res['id']))
+			con.commit()
+			con.close()
+			return
 
-			enabled_str = 'enabled' if enabled else 'disabled'
-			self.buffer_print('VOLTRON', f'Module {module_name} has been {enabled_str}')
+		enabled = not res['enabled']
+		sql = "UPDATE modules SET enabled = ? WHERE id = ?"
+		cur.execute(sql, (enabled, res['id']))
+
+		enabled_str = 'enabled' if enabled else 'disabled'
+		self.buffer_print('VOLTRON', f'Module {module_name} has been {enabled_str}')
+		self.buffer_print('STATUS', 'Modules changed. Restart VoltronBot for changes to take effect.')
 
 		con.commit()
 		con.close()
+
 
 	def list_modules(self, input, command):
 		con, cur = get_db()
@@ -57,7 +62,7 @@ class ModuleManager(ModuleBase):
 		self.buffer_print('VOLTRON', 'Available Modules:')
 
 		for r in res:
-			mod_str = r['module_name']
+			mod_str = '  ' + r['module_name']
 			if not r['enabled']:
 				mod_str += ' (DISABLED)'
 			self.buffer_print('VOLTRON', mod_str)

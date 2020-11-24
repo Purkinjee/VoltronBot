@@ -9,6 +9,7 @@ class ChatMessageParser:
 			'sender': self.sender,
 			'uptime': self.uptime,
 			'count': self.counter,
+			'lastplayed': self.last_played
 		}
 
 		self.chat_string = chat_string
@@ -57,8 +58,22 @@ class ChatMessageParser:
 
 		return f'{hours:.0f} hours {minutes:.0f} minutes'
 
+	def last_played(self, event, *args):
+		if len(args) != 1:
+			return None
+
+		if not self.twitch_api:
+			return None
+
+		user = self.twitch_api.get_user(args[0])
+		if not user:
+			return None
+
+		channel = self.twitch_api.get_channel(user['id'])
+		return channel.get('game_name', 'No Game')
+
 	def counter(self, event, *args):
-		if len(args) > 1:
+		if len(args) != 1:
 			return None
 
 		counter_name = args[0]

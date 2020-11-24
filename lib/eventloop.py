@@ -4,7 +4,8 @@ import sys
 import time
 from importlib import import_module
 from queue import Queue
-from playsound import playsound
+import sounddevice
+import audio2numpy
 
 from base.events import Event, TimerEvent, StreamStatusEvent
 from lib.common import get_db, get_broadcaster, get_module_directory
@@ -87,7 +88,14 @@ class MediaThread(threading.Thread):
 				continue
 
 			if media[0] == 'audio':
-				playsound(media[1])
+				kwargs = {}
+				if len(media) >= 3:
+					kwargs = media[2]
+				device = kwargs.get('device', None)
+				data, fs = audio2numpy.open_audio(media[1])
+				sounddevice.play(data, fs, device=device)
+				sounddevice.wait()
+
 
 class EventLoop(threading.Thread):
 	def __init__(self, voltron, buffer_queue, event_queue):
@@ -95,6 +103,7 @@ class EventLoop(threading.Thread):
 		self.buffer_queue = buffer_queue
 		self.event_queue = event_queue
 		self.media_queue = Queue()
+		self._core_mod_names = []
 
 		self.modules = []
 		self.voltron = voltron
@@ -110,55 +119,15 @@ class EventLoop(threading.Thread):
 		self._keep_listening = True
 
 	def run(self):
-		con, cur = get_db()
 		core_mods = next(os.walk('./CoreModules'))[1]
 		for mod in core_mods:
 			if mod[0] == '_':
 				continue
 			mod_instance = import_module('CoreModules.{}'.format(mod)).VoltronModule(self, self.voltron)
+			self._core_mod_names.append(mod_instance.module_name)
 			self.modules.append(mod_instance)
 
-		#mod_dir = config.APP_DIRECTORY + '\\Modules'
-		mod_dir = get_module_directory()
-		#manager = PluginManager()
-		#manager.setPluginPlaces([mod_dir])
-		#manager.collectPlugins()
-
-		#for plugin in manager.getAllPlugins():
-		#	self.voltron.buffer_queue.put(('VOLTRON', plugin.plugin_object.try_hard()))
-		# sys.path.append(mod_dir)
-		# if not os.path.isdir(mod_dir):
-		# 	os.makedirs(mod_dir)
-		#
-		# mod_dirs = next(os.walk(mod_dir))[1]
-		# for mod in mod_dirs:
-		# 	self.voltron.buffer_queue.put(('VOLTRON', f'{mod_dir}\\{mod}\\'))
-		# 	mod_import = import_module(f'{mod}.poop').Poop
-		# 	poop = mod_import()
-		# 	self.voltron.buffer_queue.put(('VOLTRON', poop.try_hard()))
-
-		core_mods = next(os.walk('./Modules'))[1]
-		for mod in core_mods:
-			if mod[0] == '_':
-				continue
-
-			mod_import = import_module('Modules.{}'.format(mod)).VoltronModule
-			mod_name = mod_import.module_name
-
-			sql = 'SELECT * FROM modules WHERE module_name = ?'
-			cur.execute(sql, (mod_name, ))
-			res = cur.fetchone()
-			if not res:
-				sql = 'INSERT INTO modules (module_name, enabled) VALUES (?, ?)'
-				cur.execute(sql, (mod_name, 1))
-			elif not res['enabled']:
-				continue
-
-			mod_instance = mod_import(self, self.voltron)
-			self.modules.append(mod_instance)
-
-		con.commit()
-		con.close()
+		self.update_modules()
 
 		self.timer_thread = TimerEventThread(self.event_queue)
 		self.timer_thread.start()
@@ -170,6 +139,55 @@ class EventLoop(threading.Thread):
 		self.live_thread.start()
 
 		self.listen()
+
+	def update_modules(self):
+		con, cur = get_db()
+		mod_dir = get_module_directory()
+
+		core_mods = next(os.walk('./Modules'))[1]
+		core_mods += next(os.walk(mod_dir))[1]
+		for mod in core_mods:
+			if mod[0] == '_':
+				continue
+
+			mod_import = import_module('Modules.{}'.format(mod)).VoltronModule
+			mod_name = mod_import.module_name
+			if mod_name in self._core_mod_names:
+				self.buffer_queue.put(('ERR', f'Invalid Module Name: {mod_name}'))
+				continue
+
+			sql = 'SELECT * FROM modules WHERE module_name = ?'
+			cur.execute(sql, (mod_name, ))
+			res = cur.fetchone()
+			if not res:
+				sql = 'INSERT INTO modules (module_name, enabled) VALUES (?, ?)'
+				cur.execute(sql, (mod_name, 0))
+			elif not res['enabled']:
+				continue
+
+			mod_instance = mod_import(self, self.voltron)
+			self.modules.append(mod_instance)
+
+		module_names = []
+		for mod in  self.modules:
+			module_names.append(mod.module_name)
+
+		sql = "DELETE FROM modules WHERE module_name NOT IN ({})".format(','.join('?' * len(module_names)))
+
+		cur.execute(sql, module_names)
+		res = cur.fetchall()
+
+		con.commit()
+		con.close()
+
+	def get_all_commands(self, twitch_id, is_mod=False, is_broadcaster=False):
+		commands = {}
+		for mod in self.modules:
+			mod_commands = mod.get_commands(twitch_id, is_mod, is_broadcaster)
+			if mod_commands:
+				commands[mod.module_name] = mod_commands
+
+		return commands
 
 	def register_event(self, event_type, callback, event_params):
 		if event_type in self.registered_listeners:
