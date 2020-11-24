@@ -82,7 +82,7 @@ class Rotator(ModuleBase):
 
 		self.buffer_print('VOLTRON', f"Rotator message added: {input}")
 
-	def list_messages(self, input, command):
+	def list_messages(self, input=None, command=None):
 		messages = self._rotator_data.get('messages', [])
 
 		if not messages:
@@ -98,7 +98,7 @@ class Rotator(ModuleBase):
 		return messages
 
 	def delete_message(self, input, command):
-		message_list = self.list_messages(None)
+		message_list = self.list_messages()
 
 		def select_message(prompt):
 			if prompt.lower().strip() == 'c':
