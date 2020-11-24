@@ -15,6 +15,8 @@ class Welcome(ModuleBase):
 
 		self._sound_data = self.get_module_data()
 		self._sound_command = self._sound_data.get('sound_command', 'hi')
+		self._sound_cooldown = 300
+		self._stream_online = False
 		if not 'user_sounds' in self._sound_data.keys():
 			self._sound_data['user_sounds'] = {}
 
@@ -92,6 +94,13 @@ class Welcome(ModuleBase):
 		sound_played = False
 		if event.user_id in self._sound_data['user_sounds']:
 			data = self._sound_data['user_sounds'][event.user_id]
+			last_played = data.get('last_played', 0)
+			elapsed = time.time() - last_played
+			if elapsed < self._sound_cooldown:
+				if run_by_command:
+					remaining = self._sound_cooldown - elapsed
+					self.send_chat_message(f"@{event.display_name} Command !{event.command} is on cooldown ({int(remaining)}s)")
+				return
 
 			if data.get('sound_file', None):
 				sound_path = f"{self.media_directory}\\{data['sound_file']}"
@@ -104,6 +113,8 @@ class Welcome(ModuleBase):
 
 			if data.get('message', None):
 				self.send_chat_message(data['message'], event=event)
+
+			self._sound_data['user_sounds'][event.user_id]['last_played'] = time.time()
 
 		since_alert = time.time() - self._last_alert
 		if not sound_played and self.alert_sound_device is not None and self.alert_sound and not run_by_command and since_alert > 30:
