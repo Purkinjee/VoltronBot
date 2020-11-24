@@ -4,7 +4,6 @@ from base.events import EVT_CHATMESSAGE, EVT_CHATCOMMAND
 import re
 import os
 import time
-from playsound import playsound
 
 class SoundCommand(ModuleBase):
 	module_name = "sound_command"
