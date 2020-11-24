@@ -5,7 +5,7 @@ import time
 
 from base.module import ModuleBase, ModuleAdminCommand
 from lib.common import get_broadcaster
-from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND, EVT_STREAM_STATUS
+from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND, EVT_STREAM_STATUS, ChatMessageEvent
 
 class Welcome(ModuleBase):
 	module_name = "welcome"
@@ -34,6 +34,13 @@ class Welcome(ModuleBase):
 			self._add_entrance_sound,
 			usage = f'{self.module_name} sound <twitch_user> <sound.mp3>',
 			description = 'Add entrance sound for <twitch_user> set <sound.mp3> to "none" to clear'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'volume',
+			self._set_volume,
+			usage = f'{self.module_name} volume <twitch_user> <volume>',
+			description = 'Set volume for entrance sound in %. Default is 100.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -85,12 +92,19 @@ class Welcome(ModuleBase):
 			description = 'Set the sound file for entrance alerts. Set <soundfile> to "none" to clear.'
 		))
 
+		self.register_admin_command(ModuleAdminCommand(
+			'test',
+			self._test_welcome,
+			usage = f'{self.module_name} test <user>',
+			description = 'Test the welcome event for <user> if one is set.'
+		))
+
 		self.event_listen(EVT_FIRST_MESSAGE, self.first_message)
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 		self.event_listen(EVT_STREAM_STATUS, self.status_change)
 
-	def first_message(self, event, run_by_command=False):
-		if not self._stream_online:
+	def first_message(self, event, run_by_command=False, testing=False):
+		if not self._stream_online and not testing:
 			return
 		if not run_by_command:
 			self.buffer_print('VOLTRON', f'First message: {event.display_name}')
@@ -100,24 +114,30 @@ class Welcome(ModuleBase):
 			last_played = data.get('last_played', 0)
 			elapsed = time.time() - last_played
 			if elapsed < self._sound_cooldown:
-				if run_by_command:
+				if run_by_command and not testing:
 					remaining = self._sound_cooldown - elapsed
 					self.send_chat_message(f"@{event.display_name} Command !{event.command} is on cooldown ({int(remaining)}s)")
 				return
 
 			if data.get('sound_file', None):
 				sound_path = f"{self.media_directory}\\{data['sound_file']}"
+				volume = data.get('volume', 100)
 				if not os.path.isfile(sound_path):
 					self.buffer_print('ERR', f'{sound_path} does not exist')
 
 				else:
-					self.play_audio(sound_path, sound_device=self.entrance_sound_device)
+					self.play_audio(
+						sound_path,
+						device=self.entrance_sound_device,
+						volume=volume
+					)
 					sound_played = True
 
 			if data.get('message', None):
 				self.send_chat_message(data['message'], event=event)
 
-			self._sound_data['user_sounds'][event.user_id]['last_played'] = time.time()
+			if not testing:
+				self._sound_data['user_sounds'][event.user_id]['last_played'] = time.time()
 
 		since_alert = time.time() - self._last_alert
 		if not sound_played and self.alert_sound_device is not None and self.alert_sound and not run_by_command and since_alert > 30:
@@ -125,7 +145,7 @@ class Welcome(ModuleBase):
 			if not os.path.isfile(alert_path):
 				self.buffer_print('ERR', f'{alert_path} does not exist')
 			else:
-				self.play_audio(alert_path, sound_device=self.alert_sound_device)
+				self.play_audio(alert_path, device=self.alert_sound_device)
 				self._last_alert = time.time()
 
 	def status_change(self, event):
@@ -230,6 +250,8 @@ class Welcome(ModuleBase):
 			sound_file = sound_data.get('sound_file', 'None')
 			message = sound_data.get('message', 'None')
 			self.buffer_print('VOLTRON', f'    Sound File: {sound_file}')
+			if sound_file:
+				self.buffer_print('VOLTRON', f"    Volume: {sound_data.get('volume', 100)}%")
 			self.buffer_print('VOLTRON', f'    message: {message}')
 
 	def _show_directory(self, input, command):
@@ -304,6 +326,57 @@ class Welcome(ModuleBase):
 
 	def _set_alert_audio_device(self, input, command):
 		self._select_audio_device('alert_sound_device')
+
+	def _set_volume(self, input, command):
+		match = re.search(r'^([^ ]+) (\d+)$', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		login = match.group(1)
+		volume = int(match.group(2))
+
+		broadcaster = get_broadcaster()
+		api = broadcaster.twitch_api
+		user_info = api.get_user(login)
+
+		if not user_info:
+			self.buffer_print('VOLTRON', f'User not found: {login}')
+			return
+
+		if user_info['id'] not in self._sound_data['user_sounds']:
+			self.buffer_print('VOLTRON', f'Welcome not configured for: {user_info["display_name"]}')
+			return
+
+		self._sound_data['user_sounds'][user_info['id']]['volume'] = volume
+		self.buffer_print('VOLTRON', f"Volume for {user_info['display_name']} set to {volume}%")
+
+	def _test_welcome(self, input, command):
+		match = re.search(r'^([^ ]+)$', input)
+
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		login = match.group(1)
+
+		broadcaster = get_broadcaster()
+		api = broadcaster.twitch_api
+		user_info = api.get_user(login)
+
+		if not user_info:
+			self.buffer_print('VOLTRON', f'User not found: {login}')
+			return
+
+		event = ChatMessageEvent(
+			'',
+			user_info['display_name'],
+			user_info['id'],
+			False,
+			False
+		)
+
+		self.first_message(event, testing=True, run_by_command=True)
 
 	@property
 	def media_directory(self):

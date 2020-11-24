@@ -6,6 +6,8 @@ from importlib import import_module
 from queue import Queue
 import sounddevice
 import audio2numpy
+import numpy
+from math import sqrt
 
 from base.events import Event, TimerEvent, StreamStatusEvent
 from lib.common import get_db, get_broadcaster, get_module_directory
@@ -92,10 +94,15 @@ class MediaThread(threading.Thread):
 				if len(media) >= 3:
 					kwargs = media[2]
 				device = kwargs.get('device', None)
+				volume = kwargs.get('volume', 100)
 				data, fs = audio2numpy.open_audio(media[1])
+				if volume != 100 and type(volume) == int:
+					factor = volume / 100
+					multiplier = pow(2, (sqrt(sqrt(sqrt(factor))) * 192 - 192)/6)
+					numpy.multiply(data, multiplier, out=data, casting='unsafe')
+
 				sounddevice.play(data, fs, device=device)
 				sounddevice.wait()
-
 
 class EventLoop(threading.Thread):
 	def __init__(self, voltron, buffer_queue, event_queue):

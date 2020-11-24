@@ -108,8 +108,8 @@ class ModuleBase:
 	def admin_command(self, trigger):
 		return self.admin_commands.get(trigger, None)
 
-	def play_audio(self, path, sound_device=None):
-		self.event_loop.media_queue.put(('audio', path, {'device': sound_device}))
+	def play_audio(self, path, **kwargs):
+		self.event_loop.media_queue.put(('audio', path, kwargs))
 
 	def get_commands(self, twitch_id, is_mod=False, is_broadcaster=False):
 		return []
