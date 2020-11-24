@@ -5,7 +5,7 @@ import time
 
 from base.module import ModuleBase, ModuleAdminCommand
 from lib.common import get_broadcaster
-from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND
+from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND, EVT_STREAM_STATUS
 
 class Welcome(ModuleBase):
 	module_name = "welcome"
@@ -87,8 +87,11 @@ class Welcome(ModuleBase):
 
 		self.event_listen(EVT_FIRST_MESSAGE, self.first_message)
 		self.event_listen(EVT_CHATCOMMAND, self.command)
+		self.event_listen(EVT_STREAM_STATUS, self.status_change)
 
 	def first_message(self, event, run_by_command=False):
+		if not self._stream_online:
+			return
 		if not run_by_command:
 			self.buffer_print('VOLTRON', f'First message: {event.display_name}')
 		sound_played = False
@@ -124,6 +127,12 @@ class Welcome(ModuleBase):
 			else:
 				self.play_audio(alert_path, sound_device=self.alert_sound_device)
 				self._last_alert = time.time()
+
+	def status_change(self, event):
+		if event.is_live:
+			self._stream_online = True
+		else:
+			self._stream_online = False
 
 	def command(self, event):
 		if event.command != self._sound_command:

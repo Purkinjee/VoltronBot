@@ -146,6 +146,7 @@ class EventLoop(threading.Thread):
 
 		core_mods = next(os.walk('./Modules'))[1]
 		core_mods += next(os.walk(mod_dir))[1]
+		module_names = []
 		for mod in core_mods:
 			if mod[0] == '_':
 				continue
@@ -156,21 +157,23 @@ class EventLoop(threading.Thread):
 				self.buffer_queue.put(('ERR', f'Invalid Module Name: {mod_name}'))
 				continue
 
+			module_names.append(mod_name)
 			sql = 'SELECT * FROM modules WHERE module_name = ?'
 			cur.execute(sql, (mod_name, ))
 			res = cur.fetchone()
 			if not res:
 				sql = 'INSERT INTO modules (module_name, enabled) VALUES (?, ?)'
 				cur.execute(sql, (mod_name, 0))
+				continue
 			elif not res['enabled']:
 				continue
 
 			mod_instance = mod_import(self, self.voltron)
 			self.modules.append(mod_instance)
 
-		module_names = []
-		for mod in  self.modules:
-			module_names.append(mod.module_name)
+		#module_names = []
+		#for mod in self.modules:
+		#	module_names.append(mod.module_name)
 
 		sql = "DELETE FROM modules WHERE module_name NOT IN ({})".format(','.join('?' * len(module_names)))
 
