@@ -257,7 +257,7 @@ class IRCBase:
 			return True
 
 		## Otherwise log messages to a text file for now
-		self._log(resp)
+		#self._log(resp)
 
 	def _log(self, msg):
 		log_file = open(config.IRC_LOG_FILE, "a+")
