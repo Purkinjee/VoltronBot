@@ -271,6 +271,9 @@ class Welcome(ModuleBase):
 			valid_devices[count] = device
 
 		def save(prompt):
+			if prompt.strip() == 'c':
+				self.update_status_text()
+				return True
 			match = re.search(r'^(\d+)$', prompt)
 			if not match:
 				return False
@@ -286,7 +289,7 @@ class Welcome(ModuleBase):
 			self.buffer_print('VOLTRON', f"Audio device set to {valid_devices[device_id]['name']}")
 			return True
 
-		self.update_status_text('Select Audio Device')
+		self.update_status_text('Select Audio Device. c to cancel')
 		self.prompt_ident = self.get_prompt('Audio Device> ', save)
 
 	def _set_entrance_audio_device(self, input, command):

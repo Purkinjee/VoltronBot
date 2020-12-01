@@ -8,6 +8,7 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit import Application
 from prompt_toolkit.lexers import PygmentsLexer
+from prompt_toolkit.completion import NestedCompleter, Completer, Completion
 from prompt_toolkit.key_binding.bindings.scroll import scroll_one_line_up, scroll_one_line_down
 
 from pygments.lexer import RegexLexer
@@ -21,17 +22,18 @@ import time
 from Version import VERSION
 
 DEFAULT_STATUS = 'Ready'
-DEFAULT_PROMPT = 'VoltronBot> '
+DEFAULT_PROMPT = 'VoltronBot>'
 
 class UIBufferQueue(threading.Thread):
 	"""
 	This thread watches the buffer queue and outputs data into the main window of the UI
 	"""
-	def __init__(self, input_queue, scrolling_output):
+	def __init__(self, voltron, input_queue, scrolling_output):
 		threading.Thread.__init__(self)
 
 		self.input_queue = input_queue
 		self.scrolling_output = scrolling_output
+		self.voltron = voltron
 
 		self.keep_listening = True
 
@@ -44,10 +46,10 @@ class UIBufferQueue(threading.Thread):
 					self.keep_listening = False
 					break
 
-				if type(input) is tuple and input[0] in ['INFO', 'STATUS', 'DEBUG', 'ERR', 'CRIT', 'WARN']:
+				if type(input) is tuple and input[0] in ['INFO', 'STATUS', 'DEBUG', 'ERR', 'CRIT', 'WARN', 'VOLTRON']:
 					self.update_scrolling_output(input)
-				if type(input) is tuple and input[0] in ['VOLTRON']:
-					self.update_scrolling_output(input)
+				#if type(input) is tuple and input[0] in ['VOLTRON']:
+				#	self.update_scrolling_output(input)
 			except queue.Empty:
 				pass
 
@@ -71,9 +73,15 @@ class UIBufferQueue(threading.Thread):
 			type = input[0],
 			new = new
 		)
+		#pos = None
+		if not self.voltron._scrolled_to_bottom:
+			pos = self.scrolling_output.buffer.document.cursor_position
+		else:
+			pos = len(text)
 		self.scrolling_output.buffer.document = Document(
 			text = text,
-			cursor_position = len(text)
+			#cursor_position = len(text)
+			cursor_position = pos
 		)
 
 class VoltronOutputLexer(RegexLexer):
@@ -120,7 +128,7 @@ Control-C to exit
 		)
 
 		self.buffer_queue = buffer_queue
-		self.buffer_thread = UIBufferQueue(self.buffer_queue, self.scrolling_output)
+		self.buffer_thread = UIBufferQueue(self, self.buffer_queue, self.scrolling_output)
 		self.buffer_thread.start()
 		self.prompt_queue = queue.Queue()
 
@@ -135,9 +143,9 @@ Control-C to exit
 		## TextArea for prompt
 		self.prompt = TextArea(
 			height=1,
-			prompt=DEFAULT_PROMPT,
+			#prompt=DEFAULT_PROMPT,
 			multiline=False,
-			wrap_lines=False
+			wrap_lines=True
 		)
 		self.prompt.accept_handler = self.input_recv
 
@@ -150,17 +158,19 @@ Control-C to exit
 			height=1,
 			style="class:status-bar"
 		)
+		self.scroll_window = Window(
+			content=self.scroll_text,
+			height=1,
+			width=6,
+			style="class:status-bar"
+		)
 		status_split = VSplit([
 			self.status_window,
-
-			Window(
-				content=self.scroll_text,
-				height=1,
-				width=6,
-				style="class:status-bar"
-			)
-
+			self.scroll_window
 		])
+
+		self.prompt_text = FormattedTextControl(text=DEFAULT_PROMPT)
+		self.prompt_window = Window(content=self.prompt_text, height=1, width=len(DEFAULT_PROMPT)+1)
 
 		## Create top bar
 		self.main_container = HSplit([
@@ -172,10 +182,10 @@ Control-C to exit
 
 			status_split,
 
-			#VSplit([
-			#Window(content=FormattedTextControl(text="VoltronBot>"), height=1, width=12),
-			self.prompt
-			#])
+			VSplit([
+				self.prompt_window,
+				self.prompt
+			]),
 		])
 
 		style = Style([
@@ -220,7 +230,20 @@ Control-C to exit
 	@property
 	def _scrolled_to_bottom(self):
 		## True if the main output is scrolled to the bottom
+		if self.scrolling_output.window.render_info == None:
+			return True
 		return (self.scrolling_output.window.vertical_scroll + self.scrolling_output.window.render_info.window_height) >= self.scrolling_output.window.render_info.content_height
+
+	def build_completer(self):
+		completions = {'?': {}}
+		for module_name in self.modules:
+			actions = {}
+			for action in self.modules[module_name].available_admin_commands():
+				actions[action] = None
+			completions[module_name] = actions
+			completions['?'][module_name] = actions
+
+		self.prompt.completer = NestedCompleter.from_nested_dict(completions)
 
 	def register_module(self, module):
 		"""
@@ -232,6 +255,7 @@ Control-C to exit
 		if module.module_name in self.modules:
 			raise Exception('Duplicate module: {}'.format(module.module_name))
 		self.modules[module.module_name] = module
+		self.build_completer()
 
 	def update_status_text(self, text=None):
 		"""
@@ -243,9 +267,11 @@ Control-C to exit
 		if text:
 			self.status_text.text = text
 			self.status_window.style = 'class:status-bar-important'
+			self.scroll_window.style = 'class:status-bar-important'
 		else:
 			self.status_text.text = DEFAULT_STATUS
 			self.status_window.style = 'class:status-bar'
+			self.scroll_window.style = 'class:status-bar'
 		self._app.invalidate()
 
 	def run(self):
@@ -296,9 +322,12 @@ Control-C to exit
 		self.prompt_ident = ident
 
 		if prompt:
-			self.prompt.control.input_processors[-1].text = prompt
+			prompt = prompt.strip()
+			self.prompt_text.text = prompt
+			self.prompt_window.width = len(prompt) + 1
 		else:
-			self.prompt.control.input_processors[-1].text = DEFAULT_PROMPT
+			self.prompt_text.text = DEFAULT_PROMPT
+			self.prompt_window.width = len(DEFAULT_PROMPT) + 1
 		self.module_prompt_callback = callback
 
 		## Must call invalidate on app to refresh UI
