@@ -10,6 +10,7 @@ from prompt_toolkit import Application
 from prompt_toolkit.lexers import PygmentsLexer
 from prompt_toolkit.completion import NestedCompleter, Completer, Completion
 from prompt_toolkit.key_binding.bindings.scroll import scroll_one_line_up, scroll_one_line_down
+from prompt_toolkit.application import get_app
 
 from pygments.lexer import RegexLexer
 from pygments import token
@@ -117,7 +118,7 @@ class VoltronUI:
 		default_text = """
 Welcome to VoltronBot!
 Type ? for available commands.
-Control-C to exit
+Control-C or type 'quit' to exit
 """
 		lexer = PygmentsLexer(VoltronOutputLexer)
 		## Main output TextArea
@@ -347,6 +348,12 @@ Control-C to exit
 			if status:
 				self.module_prompt_callback = None
 				self.mod_prompt(None, None)
+			return
+
+		if self.prompt.text.strip().lower() == 'quit':
+			self.buffer_queue.put('SHUTDOWN')
+			self.buffer_thread.join()
+			get_app().exit()
 			return
 
 		## Check for help command
