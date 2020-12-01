@@ -285,6 +285,7 @@ class Welcome(ModuleBase):
 				return False
 
 			self._sound_data[key] = prompt
+			self.save_module_data(self._sound_data)
 			self.update_status_text()
 			self.buffer_print('VOLTRON', f"Audio device set to {valid_devices[device_id]['name']}")
 			return True
@@ -352,6 +353,7 @@ class Welcome(ModuleBase):
 			return
 
 		self._sound_data['user_sounds'][user_info['id']]['volume'] = volume
+		self.save_module_data(self._sound_data)
 		self.buffer_print('VOLTRON', f"Volume for {user_info['display_name']} set to {volume}%")
 
 	def _test_welcome(self, input, command):
