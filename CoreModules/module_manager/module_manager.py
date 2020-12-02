@@ -29,7 +29,7 @@ class ModuleManager(ModuleBase):
 
 		con, cur = get_db()
 
-		sql = "SELECT * FROM modules WHERE module_name = ?"
+		sql = "SELECT * FROM modules WHERE module_name = ? AND is_core = 0"
 		cur.execute(sql, (module_name, ))
 		res = cur.fetchone()
 
@@ -54,7 +54,7 @@ class ModuleManager(ModuleBase):
 	def list_modules(self, input, command):
 		con, cur = get_db()
 
-		sql = "SELECT * FROM modules"
+		sql = "SELECT * FROM modules WHERE is_core = 0"
 		cur.execute(sql)
 		res = cur.fetchall()
 

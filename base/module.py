@@ -29,6 +29,7 @@ class ModuleBase:
 	Base class for all modules. Every module needs to inherit from this class.
 	Instances are created automatically from the event loop
 	"""
+	configurable = True
 	def __init__(self, event_loop, voltron):
 		self.admin_commands = {}
 		self.voltron = voltron

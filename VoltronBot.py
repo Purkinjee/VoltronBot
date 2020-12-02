@@ -19,6 +19,7 @@ from VoltronUI import VoltronUI
 from CoreModules.account import VoltronModule as Account
 from lib.common import get_broadcaster, get_all_acccounts, get_db
 from lib.eventloop import EventLoop
+from VoltronXMLRPC import VoltronXMLRPCThread
 
 THREADS = []
 
@@ -74,6 +75,7 @@ class VoltronBot:
 		self.ui = VoltronUI(self.buffer_queue)
 
 		self.event_loop = None
+		self.xmlrpc = None
 		self.default_account = None
 
 		self.reset()
@@ -123,6 +125,9 @@ class VoltronBot:
 		## Create the event loop thread and start it
 		self.event_loop = EventLoop(self, self.buffer_queue, self.event_queue)
 		self.event_loop.start()
+
+		self.xmlrpc = VoltronXMLRPCThread()
+		self.xmlrpc.start()
 
 	def get_module_data(self, module):
 		"""
@@ -221,6 +226,9 @@ class VoltronBot:
 		if self.event_loop:
 			self.event_queue.put('SHUTDOWN')
 			self.event_loop.join()
+		if self.xmlrpc:
+			self.xmlrpc.shutdown()
+			self.xmlrpc.join()
 		for twitch_id in self.irc_map:
 			self.irc_map[twitch_id].disconnect()
 			self.irc_map[twitch_id].join()

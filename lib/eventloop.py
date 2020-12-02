@@ -127,12 +127,31 @@ class EventLoop(threading.Thread):
 
 	def run(self):
 		core_mods = next(os.walk('./CoreModules'))[1]
+		con,cur = get_db()
 		for mod in core_mods:
 			if mod[0] == '_':
 				continue
 			mod_instance = import_module('CoreModules.{}'.format(mod)).VoltronModule(self, self.voltron)
-			self._core_mod_names.append(mod_instance.module_name)
+			mod_name = mod_instance.module_name
+			configurable = int(mod_instance.configurable)
+			self._core_mod_names.append(mod_name)
 			self.modules.append(mod_instance)
+
+			sql = 'SELECT * FROM modules WHERE module_name = ?'
+			cur.execute(sql, (mod_name, ))
+			res = cur.fetchone()
+			if not res:
+				sql = 'INSERT INTO modules (module_name, enabled, is_core, configurable) VALUES (?, 1, 1, ?)'
+				cur.execute(sql, (mod_name, configurable))
+			else:
+				sql = "UPDATE modules SET is_core = 1, configurable = ? WHERE id = ?"
+				cur.execute(sql, (configurable, res['id']))
+
+		sql = "DELETE FROM modules WHERE module_name NOT IN ({}) AND is_core = 1".format(','.join('?' * len(self._core_mod_names)))
+
+		cur.execute(sql, self._core_mod_names)
+		con.commit()
+		con.close()
 
 		self.update_modules()
 
@@ -160,6 +179,7 @@ class EventLoop(threading.Thread):
 
 			mod_import = import_module('Modules.{}'.format(mod)).VoltronModule
 			mod_name = mod_import.module_name
+			configurable = int(mod_import.configurable)
 			if mod_name in self._core_mod_names:
 				self.buffer_queue.put(('ERR', f'Invalid Module Name: {mod_name}'))
 				continue
@@ -169,20 +189,19 @@ class EventLoop(threading.Thread):
 			cur.execute(sql, (mod_name, ))
 			res = cur.fetchone()
 			if not res:
-				sql = 'INSERT INTO modules (module_name, enabled) VALUES (?, ?)'
-				cur.execute(sql, (mod_name, 0))
+				sql = 'INSERT INTO modules (module_name, enabled, configurable) VALUES (?, 0, ?)'
+				cur.execute(sql, (mod_name, configurable))
 				continue
-			elif not res['enabled']:
+			else:
+				sql = "UPDATE modules SET is_core = 0, configurable = ? WHERE id = ?"
+				cur.execute(sql, (configurable, res['id']))
+			if not res['enabled']:
 				continue
 
 			mod_instance = mod_import(self, self.voltron)
 			self.modules.append(mod_instance)
 
-		#module_names = []
-		#for mod in self.modules:
-		#	module_names.append(mod.module_name)
-
-		sql = "DELETE FROM modules WHERE module_name NOT IN ({})".format(','.join('?' * len(module_names)))
+		sql = "DELETE FROM modules WHERE module_name NOT IN ({}) AND is_core = 0".format(','.join('?' * len(module_names)))
 
 		cur.execute(sql, module_names)
 		res = cur.fetchall()
