@@ -71,6 +71,25 @@ def get_broadcaster():
 
 	return User(res['id'])
 
+def get_default_user():
+	"""
+	Get a User object for the default account, if one exists
+	"""
+	con, cur = get_db()
+
+	sql = "SELECT id FROM oauth WHERE is_default = 1"
+	cur.execute(sql)
+	res = cur.fetchone()
+
+	con.commit()
+	con.close()
+
+	if not res:
+		debug("No default exists")
+		return get_broadcaster()
+
+	return User(res['id'])
+
 def get_user_by_twitch_id(twitch_id):
 	con, cur = get_db()
 

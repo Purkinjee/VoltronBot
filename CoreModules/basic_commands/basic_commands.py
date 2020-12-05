@@ -18,7 +18,7 @@ class BasicCommands(ModuleBase):
 			'addcommand': self._add_command,
 			'appendcommand': self._append_command,
 			'deletecommand': self._delete_command,
-			'c': self._list_commands,
+			#'c': self._list_commands,
 		}
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -135,7 +135,9 @@ class BasicCommands(ModuleBase):
 			command = match.group(1)
 			response = match.group(2).strip()
 			if command in self._commands:
-				self._commands[command]['response'] = [response]
+				#self._commands[command]['response'] = [response]
+				self.send_chat_message(f"@{event.display_name} The command !{command} already exists. You can delete it using !deletecommand")
+				return
 			else:
 				self._commands[command] = { 'response': [response] }
 

@@ -21,6 +21,7 @@ class ChatCommandEvent(Event):
 	def __init__(self, command, args, display_name, user_id, is_mod, is_broadcaster):
 		self.command = command.lower().strip()
 		self.args = args
+		self.message = args
 		self.display_name = display_name
 		self.user_id = user_id
 		self.is_mod = is_mod
@@ -30,6 +31,7 @@ class ChatMessageEvent(Event):
 	type = EVT_CHATMESSAGE
 	def __init__(self, message, display_name, user_id, is_mod, is_broadcaster):
 		self.message = message.strip()
+		self.args = message.split(' ')
 		self.display_name = display_name
 		self.user_id = user_id
 		self.is_mod = is_mod

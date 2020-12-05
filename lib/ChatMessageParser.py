@@ -1,4 +1,5 @@
 import re
+import random
 from datetime import datetime, timezone, timedelta
 
 from lib.common import get_broadcaster, get_db
@@ -9,7 +10,10 @@ class ChatMessageParser:
 			'sender': self.sender,
 			'uptime': self.uptime,
 			'count': self.counter,
-			'lastplayed': self.last_played
+			'lastplayed': self.last_played,
+			'arg': self.argument,
+			'@': self.at,
+			'random': self.random,
 		}
 
 		self.chat_string = chat_string
@@ -17,28 +21,59 @@ class ChatMessageParser:
 		self._twitch_api = None
 		self._broadcaster = None
 
-	def parse(self):
-		all_vars = re.findall(r'\{([^ ]+)\}', self.chat_string)
+	def recursive_parse(self, chat_string):
+		all_vars = re.findall(r'\{([^ ]+)\}', chat_string)
 		vars = []
 		[vars.append(x) for x in all_vars if x not in vars]
-		parsed_str = self.chat_string
+		parsed_str = chat_string
 
 		for v in vars:
-			split = v.split(':')
+			v_parsed = self.recursive_parse(v)
+			split = v_parsed.split(':')
 			key = split[0]
 			args = split[1:]
 			if key in self.variables:
 				res = self.variables[key](self.event, *args)
-				if res:
-					parsed_str = parsed_str.replace(f'{{{v}}}', res)
+				if res != None:
+					parsed_str = parsed_str.replace(f'{{{v_parsed}}}', res)
 
 		return parsed_str
+
+	def parse(self):
+		return self.recursive_parse(self.chat_string)
 
 	def sender(self, event, *args):
 		if not event:
 			return None
 
 		return event.display_name
+
+	def at(self, event, *args):
+		at_index = 1
+		if len(args) >= 1 and re.search(r'^\d+$', args[0]):
+			at_index = int(args[0])
+
+		ats = re.findall(r'(@[^ ]+)', event.message)
+		if len(ats) < at_index:
+			return ''
+
+		return ats[at_index-1]
+
+	def argument(self, event, *args):
+		if len(args) != 1:
+			return None
+
+		match = re.search(r'^\d+$', args[0])
+		if not match:
+			return None
+
+		index = int(args[0])
+
+		words = event.message.split(' ')
+		if len(words) < index:
+			return ''
+
+		return words[index-1]
 
 	def uptime(self, event, *args):
 		if not self.broadcaster:
@@ -58,6 +93,23 @@ class ChatMessageParser:
 
 		return f'{hours:.0f} hours {minutes:.0f} minutes'
 
+	def random(self, event, *args):
+		start = '1'
+		end = '100'
+
+		if len(args) >= 2:
+			start = args[0]
+			end = args[1]
+		elif len(args) >= 1:
+			start = args[0]
+
+		if not re.search(r'^\d+$', start):
+			start = 1
+		if not re.search(r'^\d+$', end):
+			end = 100
+
+		return str(random.randrange(int(start), int(end)))
+
 	def last_played(self, event, *args):
 		if len(args) != 1:
 			return None
@@ -65,9 +117,14 @@ class ChatMessageParser:
 		if not self.twitch_api:
 			return None
 
-		user = self.twitch_api.get_user(args[0])
+		match = re.search('^\@?([^ ]+)$', args[0])
+		if not match:
+			return ''
+		user_name = match.group(1)
+
+		user = self.twitch_api.get_user(user_name)
 		if not user:
-			return None
+			return ''
 
 		channel = self.twitch_api.get_channel(user['id'])
 		return channel.get('game_name', 'No Game')
