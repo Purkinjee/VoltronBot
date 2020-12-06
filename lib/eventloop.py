@@ -15,10 +15,11 @@ from lib.TwitchAPIHelper import TwitchAPIHelper
 import config
 
 class BroadcastStatusThread(threading.Thread):
-	def __init__(self, event_queue):
+	def __init__(self, event_queue, buffer_queue):
 		threading.Thread.__init__(self)
 
 		self.event_queue = event_queue
+		self.buffer_queue = buffer_queue
 		self.last_check = 0
 		self._keep_listening = True
 
@@ -39,12 +40,15 @@ class BroadcastStatusThread(threading.Thread):
 								started_at = stream['started_at'],
 								viewer_count = stream['viewer_count']
 							))
+							self.buffer_queue.put(('VOLTRON', 'Stream is now live!'))
+							self.buffer_queue.put(('DEBUG', f"Stream ID: {stream['id']}"))
 
 						self.broadcast_id = stream['id']
 
 					else:
 						if self.broadcast_id or self.last_check == 0:
 							self.event_queue.put(StreamStatusEvent())
+							self.buffer_queue.put(('INFO', 'Stream is offline.'))
 
 						self.broadcast_id = None
 
@@ -142,7 +146,7 @@ class EventLoop(threading.Thread):
 		self.media_thread = MediaThread(self.media_queue)
 		self.media_thread.start()
 
-		self.live_thread = BroadcastStatusThread(self.event_queue)
+		self.live_thread = BroadcastStatusThread(self.event_queue, self.buffer_queue)
 		self.live_thread.start()
 
 		self.listen()
