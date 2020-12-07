@@ -54,6 +54,13 @@ class SoundCommand(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
+			'volume',
+			self._set_volume,
+			usage = f'{self.module_name} volume <!command> <volume>',
+			description = 'Set volume for sound in %. Default is 100.'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
 			'mod_only',
 			self._toggle_mod_only,
 			usage = f'{self.module_name} mod_only !<command>',
@@ -102,13 +109,14 @@ class SoundCommand(ModuleBase):
 			return
 
 		sound_path = f"{self.media_directory}\\{command['sound_file']}"
+		volume = command.get('volume', 100)
 
 		if not os.path.isfile(sound_path):
 			self.buffer_print('ERR', f'{sound_path} does not exist')
 			return
 
 		self._commands['commands'][event.command]['runtime'] = time.time()
-		self.play_audio(sound_path, device=self.audio_device)
+		self.play_audio(sound_path, device=self.audio_device, volume=volume)
 
 	def _select_audio_device(self, input, command):
 		devices = sounddevice.query_devices()
@@ -152,6 +160,23 @@ class SoundCommand(ModuleBase):
 		self.update_status_text('Select Audio Device. c to cancel. -1 to reset to default.')
 		self.prompt_ident = self.get_prompt('Audio Device> ', save)
 
+	def _set_volume(self, input, command):
+		match = re.search(r'^!([^ ]+) (\d+)$', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		command = match.group(1).lower()
+		volume = int(match.group(2))
+
+		if not command in self._commands['commands']:
+			self.buffer_print('VOLTRON', f'Command not found: !{command}')
+			return
+
+		self._commands['commands'][command]['volume'] = volume
+		self.save_module_data(self._commands)
+		self.buffer_print('VOLTRON', f"Volume for !{command} set to {volume}%")
+
 	def _add_command(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+)', input)
 		if not match:
@@ -178,7 +203,10 @@ class SoundCommand(ModuleBase):
 		for command in self._commands['commands']:
 			command_list.append(command)
 			media_file = self._commands['commands'][command]['sound_file']
-			self.buffer_print('VOLTRON', f"!{command} - {media_file}")
+			volume = self._commands['commands'][command].get('volume', 100)
+			self.buffer_print('VOLTRON', f"!{command}")
+			self.buffer_print('VOLTRON', f'  File: {media_file}')
+			self.buffer_print('VOLTRON', f'  Volume: {volume}%')
 
 		self.buffer_print('VOLTRON', '')
 
