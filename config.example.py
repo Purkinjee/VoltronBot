@@ -3,6 +3,9 @@ import os
 APP_DIRECTORY = os.environ['APPDATA'] + '\\VoltronBot'
 DB = APP_DIRECTORY + '\\data.db'
 
+## Set to true for production mode
+PRODUCTION = False
+
 ## If DEBUG=False no output will be displayed for debug messages
 DEBUG = False
 

@@ -13,12 +13,15 @@ from importlib import import_module
 import shutil
 import glob
 import re
+import requests
+import json
 
 from lib.TwitchIRC import BroadcasterIRC, BotIRC
 from VoltronUI import VoltronUI
 from CoreModules.account import VoltronModule as Account
 from lib.common import get_broadcaster, get_all_acccounts, get_db
 from lib.eventloop import EventLoop
+from Version import VERSION
 
 THREADS = []
 
@@ -58,6 +61,30 @@ def migrate_db():
 	con.commit()
 	con.close()
 
+class VersionCheckThread(threading.Thread):
+	def __init__(self, buffer_queue):
+		threading.Thread.__init__(self)
+
+		self.buffer_queue = buffer_queue
+
+	def run(self):
+		time.sleep(3)
+		try:
+			req = requests.get('https://purkinje.live/voltron/version.json')
+			resp = json.loads(req.text)
+
+			if VERSION != resp['current_version']:
+				self.buffer_queue.put(('VOLTRON', f"An update for Voltron ({resp['current_version']}) is available!"))
+				self.buffer_queue.put(('VOLTRON', "Download the update using the following URL:"))
+				self.buffer_queue.put(('VOLTRON', resp['url']))
+			else:
+				self.buffer_queue.put(('INFO', 'Voltron Bot is up to date!'))
+		except:
+			self.buffer_queue.put(('ERR', 'Update Check Failed!'))
+
+		return True
+
+
 class VoltronBot:
 	"""
 	This is the main class for VoltronBot.
@@ -75,6 +102,10 @@ class VoltronBot:
 
 		self.event_loop = None
 		self.default_account = None
+
+		if config.PRODUCTION:
+			version_check = VersionCheckThread(self.buffer_queue)
+			version_check.start()
 
 		self.reset()
 

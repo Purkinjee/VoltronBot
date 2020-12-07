@@ -98,7 +98,8 @@ class VoltronOutputLexer(RegexLexer):
 			(r'^\[.*\]', token.Name.Attribute),
 			(r'\<VOLTRON\>', token.Name.Variable),
 			(r'<INFO\>.*$', token.Name.Attribute),
-			(r'<STATUS>.*$', token.Name.Label)
+			(r'<STATUS>.*$', token.Name.Label),
+			(r'<ERR>.*$', token.Name.Exception)
 		]
 	}
 
