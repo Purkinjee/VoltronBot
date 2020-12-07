@@ -4,6 +4,7 @@ from base.events import EVT_CHATMESSAGE, EVT_CHATCOMMAND
 import re
 import os
 import time
+import sounddevice
 
 class SoundCommand(ModuleBase):
 	module_name = "sound_command"
@@ -43,6 +44,13 @@ class SoundCommand(ModuleBase):
 			self._delete_command,
 			usage = f'{self.module_name} delete <!command>',
 			description = 'Delete a sound command'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'audio_device',
+			self._select_audio_device,
+			usage = f'{self.module_name} audio_device',
+			description = 'Set the sound device for sounds'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -100,7 +108,49 @@ class SoundCommand(ModuleBase):
 			return
 
 		self._commands['commands'][event.command]['runtime'] = time.time()
-		self.play_audio(sound_path)
+		self.play_audio(sound_path, device=self.audio_device)
+
+	def _select_audio_device(self, input, command):
+		devices = sounddevice.query_devices()
+		count = -1
+		valid_devices = {}
+		for device in devices:
+			count += 1
+			if device['max_output_channels'] < 1:
+				continue
+			dev_str = f"{count} {device['name']}"
+			self.buffer_print('VOLTRON', dev_str)
+			valid_devices[count] = device
+		self.buffer_print('VOLTRON', f'Current audio device: {self.audio_device}')
+
+		def save(prompt):
+			if prompt.strip() == 'c':
+				self.update_status_text()
+				return True
+			if prompt.strip() == '-1':
+				self._commands['audio_device'] = None
+				self.save_module_data(self._commands)
+				self.buffer_print('VOLTRON', 'Default audio device selected.')
+				self.update_status_text()
+				return True
+			match = re.search(r'^(\d+)$', prompt)
+			if not match:
+				return False
+
+			device_id = int(match.group(1))
+			device = valid_devices.get(device_id, None)
+			if not device:
+				self.buffer_print('VOLTRON', 'Invalid Selection')
+				return False
+
+			self._commands['audio_device'] = prompt
+			self.save_module_data(self._commands)
+			self.update_status_text()
+			self.buffer_print('VOLTRON', f"Audio device set to {valid_devices[device_id]['name']}")
+			return True
+
+		self.update_status_text('Select Audio Device. c to cancel. -1 to reset to default.')
+		self.prompt_ident = self.get_prompt('Audio Device> ', save)
 
 	def _add_command(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+)', input)
@@ -229,6 +279,13 @@ class SoundCommand(ModuleBase):
 	@property
 	def media_directory(self):
 		return self.data_directory + '\\Media'
+
+	@property
+	def audio_device(self):
+		device = self._commands.get('audio_device', None)
+		if device is not None:
+			device = int(device)
+		return device
 
 
 	def shutdown(self):
