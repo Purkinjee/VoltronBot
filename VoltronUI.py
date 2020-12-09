@@ -367,8 +367,11 @@ Control-C or type 'quit' to exit
 			self.show_help(module_name, command_name)
 			return
 
+		self.execute_command(self.prompt.text)
+
+	def execute_command(self, command):
 		## Check for a valid command
-		match = re.search(r'^([^ ]+) ([^ ]+) ?(.*)$', self.prompt.text)
+		match = re.search(r'^([^ ]+) ([^ ]+) ?(.*)$', command)
 		if match:
 			module_name = match.group(1)
 			trigger = match.group(2)

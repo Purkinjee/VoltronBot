@@ -1,0 +1,33 @@
+actions:
+  Add Account: account add
+
+tabular-data:
+  accounts:
+    title: Accounts
+    identifier: id
+
+    columns:
+      - display_name
+      - is_broadcaster
+      - is_default
+    column-detail:
+      display_name:
+        title: Display Name
+      is_broadcaster:
+        title: Is Broadcaster
+        type: bool
+      is_default:
+        title: Is Default
+        type: bool
+
+    row-actions:
+      - make_broadcaster
+      - make_default
+      - delete
+    action-detail:
+      make_broadcaster:
+        title: Make Broadcaster
+      make_default:
+        title: Make Default
+      delete:
+        title: Delete Account

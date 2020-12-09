@@ -126,7 +126,7 @@ class VoltronBot:
 		self.event_loop = EventLoop(self, self.buffer_queue, self.event_queue)
 		self.event_loop.start()
 
-		self.xmlrpc = VoltronXMLRPCThread()
+		self.xmlrpc = VoltronXMLRPCThread(self.ui)
 		self.xmlrpc.start()
 
 	def get_module_data(self, module):
