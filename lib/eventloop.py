@@ -6,6 +6,7 @@ from importlib import import_module
 from queue import Queue
 import sounddevice
 import audio2numpy
+from audio2numpy.exceptions import AudioFormatError
 import numpy
 from math import sqrt
 
@@ -76,10 +77,11 @@ class TimerEventThread(threading.Thread):
 		self._keep_listening = False
 
 class MediaThread(threading.Thread):
-	def __init__(self, media_queue):
+	def __init__(self, media_queue, buffer_queue):
 		threading.Thread.__init__(self)
 
 		self.media_queue = media_queue
+		self.buffer_queue = buffer_queue
 		self._keep_listening = True
 
 	def run(self):
@@ -99,14 +101,20 @@ class MediaThread(threading.Thread):
 					kwargs = media[2]
 				device = kwargs.get('device', None)
 				volume = kwargs.get('volume', 100)
-				data, fs = audio2numpy.open_audio(media[1])
+
+				try:
+					data, fs = audio2numpy.open_audio(media[1])
+				except AudioFormatError:
+					self.buffer_queue.put(('ERR', 'Invalid File Format:'))
+					self.buffer_queue.put(('ERR', media[1]))
+					self.buffer_queue.put(('ERR', 'Accepted file formats: .wav .mp3'))
+					continue
+
 				if volume != 100 and type(volume) == int:
 					factor = volume / 100
 					multiplier = pow(2, (sqrt(sqrt(sqrt(factor))) * 192 - 192)/6)
 					numpy.multiply(data, multiplier, out=data, casting='unsafe')
 
-				sounddevice.play(data, fs, device=device)
-				sounddevice.wait()
 
 class EventLoop(threading.Thread):
 	def __init__(self, voltron, buffer_queue, event_queue):
@@ -143,7 +151,7 @@ class EventLoop(threading.Thread):
 		self.timer_thread = TimerEventThread(self.event_queue)
 		self.timer_thread.start()
 
-		self.media_thread = MediaThread(self.media_queue)
+		self.media_thread = MediaThread(self.media_queue, self.buffer_queue)
 		self.media_thread.start()
 
 		self.live_thread = BroadcastStatusThread(self.event_queue, self.buffer_queue)
