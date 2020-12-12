@@ -115,6 +115,8 @@ class MediaThread(threading.Thread):
 					multiplier = pow(2, (sqrt(sqrt(sqrt(factor))) * 192 - 192)/6)
 					numpy.multiply(data, multiplier, out=data, casting='unsafe')
 
+				sounddevice.play(data, fs, device=device)
+				sounddevice.wait()
 
 class EventLoop(threading.Thread):
 	def __init__(self, voltron, buffer_queue, event_queue):
