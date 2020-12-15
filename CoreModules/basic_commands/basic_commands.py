@@ -120,6 +120,8 @@ class BasicCommands(ModuleBase):
 			self._commands[event.command]['runtime']['global'] = time.time()
 			self._commands[event.command]['runtime']['user'][event.user_id] = time.time()
 
+			self.save_module_data(self._commands)
+
 	def _list_commands(self, event):
 		commands = self.event_loop.get_all_commands(event.user_id, event.is_mod, event.is_broadcaster)
 		commands_str = ', '.join(commands['basic_commands'])
@@ -202,6 +204,8 @@ class BasicCommands(ModuleBase):
 		self.buffer_print('VOLTRON', f'Cooldowns set for command !{command}')
 		self.buffer_print('VOLTRON', f'global = {global_cooldown}')
 		self.buffer_print('VOLTRON', f'user = {user_cooldown}')
+
+		self.save_module_data(self._commands)
 
 	def toggle_mod_only(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
