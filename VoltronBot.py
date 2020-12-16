@@ -90,7 +90,7 @@ class VoltronBot:
 		"""
 		Disconnect and reconnect all IRC connections
 		"""
-		self.stop()
+		self.stop(stop_xmlrpc=False)
 		users = get_all_acccounts()
 		broadcaster = get_broadcaster()
 		self.ui.reset()
@@ -126,8 +126,9 @@ class VoltronBot:
 		self.event_loop = EventLoop(self, self.buffer_queue, self.event_queue)
 		self.event_loop.start()
 
-		self.xmlrpc = VoltronXMLRPCThread(self.ui)
-		self.xmlrpc.start()
+		if not self.xmlrpc:
+			self.xmlrpc = VoltronXMLRPCThread(self.ui)
+			self.xmlrpc.start()
 
 	def get_module_data(self, module):
 		"""
@@ -219,16 +220,17 @@ class VoltronBot:
 		## Make this work when we have a pubsub thread
 		pass
 
-	def stop(self):
+	def stop(self, stop_xmlrpc=True):
 		"""
 		Stop the bot and exit
 		"""
 		if self.event_loop:
 			self.event_queue.put('SHUTDOWN')
 			self.event_loop.join()
-		if self.xmlrpc:
+		if self.xmlrpc and stop_xmlrpc:
 			self.xmlrpc.shutdown()
 			self.xmlrpc.join()
+			self.xmlrpc = None
 		for twitch_id in self.irc_map:
 			self.irc_map[twitch_id].disconnect()
 			self.irc_map[twitch_id].join()

@@ -22,11 +22,13 @@ class VoltronXMLRPC:
 
 	def execute_command(self, command):
 		self.ui.execute_command(command)
+		return True
 
 	def get_module_webview(self, module_name):
 		webview =  yaml.safe_load(open('CoreModules/account/configuration.yml'))
 		module_data = self.get_module_data(module_name)
-		return {'webview': webview, 'module_data': module_data}
+		data = {'webview': webview, 'module_data': module_data}
+		return data
 
 	def get_module_data(self, module):
 		con, cur = get_db()

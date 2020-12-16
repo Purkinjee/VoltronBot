@@ -1,5 +1,32 @@
-function executeCommand (command) {
+var CURRENT_MODULE;
+function executeCommand (command, alertText) {
+	//console.log(command['action']);
 	pywebview.api.execute_command(command);
+	if (alertText !== undefined) {
+		alert(alertText);
+	}
+}
+
+function rowActionSelected() {
+	var identifier = $(this).find(":selected").attr('identifier');
+	var action = $(this).find(":selected").attr('action');
+	var confirmText = $(this).find(":selected").attr('confirm');
+	if (action !== undefined && identifier !== undefined) {
+		$.each($(this).find(":selected").get(0).attributes, function(i, attr){
+			if (attr.name != 'action' && attr.name != 'confirm') {
+				action = action.replace('{' + attr.name + '}', attr.value);
+				if (confirmText !== undefined) {
+					confirmText = confirmText.replace('{' + attr.name + '}', attr.value);
+				}
+			}
+		})
+		var confirmed = true;
+		// This doesn't work. we need to find a solution
+		// if (confirmText !== undefined) { confirmed = confirm(confirmText); }
+		pywebview.api.execute_command(action).then(function(response){
+			loadModule(CURRENT_MODULE);
+		});
+	}
 }
 
 function loadModule (module_name) {
@@ -13,7 +40,7 @@ function loadModule (module_name) {
 			var action_bar = $('<div>', {'class': 'actions'});
 			for (action in webview['actions']) {
 				action_bar.append($('<button>', {
-					'onclick': `executeCommand('${webview['actions'][action]}')`,
+					'onclick': `executeCommand('${webview['actions'][action]['action']}', '${webview['actions'][action]['alert']}')`,
 					'text': action
 				}));
 			}
@@ -42,6 +69,7 @@ function loadModule (module_name) {
 
 				for (row_data_index in module_data[table_name]) {
 					var row_data = module_data[table_name][row_data_index];
+					var identifier = row_data[webview_table['identifier']];
 					var row = $('<tr>');
 					for (column_index in webview_table['columns']) {
 						var column_name = webview_table['columns'][column_index];
@@ -57,12 +85,22 @@ function loadModule (module_name) {
 					}
 
 					if ('row-actions' in webview_table) {
-						var select = $('<select>');
+						var select = $('<select>').change(rowActionSelected);
 						select.append($('<option>'));
 						for (row_action_index in webview_table['row-actions']) {
 							var row_action_name = webview_table['row-actions'][row_action_index];
 							var row_action_detail = webview_table['action-detail'][row_action_name];
-							select.append($('<option>', {'value': row_action_name}).text(row_action_detail['title']));
+							var row_action_action = row_action_detail['action']
+							var select_attributes = {
+								'value': row_action_name,
+								'identifier': identifier,
+								'action': row_action_action
+							}
+							for (key in row_data) {
+								select_attributes[key] = row_data[key];
+							}
+							if ('confirm' in row_action_detail) {select_attributes['confirm'] = row_action_detail['confirm']; }
+							select.append($('<option>', select_attributes).text(row_action_detail['title']));
 						}
 						row.append($('<td>').append(select));
 					}
@@ -72,6 +110,7 @@ function loadModule (module_name) {
 			}
 		}
 	})
+	CURRENT_MODULE = module_name;
 }
 window.addEventListener('pywebviewready', function() {
 	pywebview.api.init();

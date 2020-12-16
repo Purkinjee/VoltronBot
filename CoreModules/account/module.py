@@ -4,8 +4,8 @@ import requests
 import sys
 
 from base.module import ModuleBase, ModuleAdminCommand
-from lib.twitch_oauth import twitch_login, save_oauth, User
-from lib.common import get_all_acccounts, get_broadcaster, get_user_by_twitch_id
+from lib.twitch_oauth import twitch_login, save_oauth
+from lib.common import get_all_acccounts, get_broadcaster, get_user_by_twitch_id, User
 import config
 
 class GetTwitchLogin(threading.Thread):
@@ -88,7 +88,21 @@ class Account(ModuleBase):
 			self.buffer_print('VOLTRON', f'{account.display_name} updated')
 		self.buffer_print('VOLTRON', 'Update Complete!')
 
+	def set_default_by_id(self, id):
+		try:
+			user = User(id)
+		except Exception as e:
+			self.buffer_print('ERR', str(e))
+			return False
+
+		user.make_default()
+		self.buffer_print('VOLTRON', f'{user.display_name} is now the default account, restarting.')
+		self.voltron.reset()
+		self.voltron.start()
+
 	def set_default(self, input, command):
+		if input.isdigit():
+			return self.set_default_by_id(int(input))
 		## This will list all accounts, allow the user to select
 		## one to make default, or cancel
 		account_list = self.list_accounts()
@@ -130,7 +144,21 @@ class Account(ModuleBase):
 		self.update_status_text('Select account to make default, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
 
+	def set_broadcaster_by_id(self, id):
+		try:
+			user = User(id)
+		except Exception as e:
+			self.buffer_print('ERR', str(e))
+			return False
+
+		user.make_broadcaster()
+		self.buffer_print('VOLTRON', f'{user.display_name} is now the broadcaster, restarting.')
+		self.voltron.reset()
+		self.voltron.start()
+
 	def set_broadcaster(self, input, command):
+		if input.isdigit():
+			return self.set_broadcaster_by_id(int(input))
 		## This will list all accounts, allow the user to select
 		## one to make broadcaster, or cancel
 		account_list = self.list_accounts()
@@ -172,7 +200,21 @@ class Account(ModuleBase):
 		self.update_status_text('Select account to make broadcaster, c to cancel')
 		self.prompt_ident = self.get_prompt('Account Number> ', select_account)
 
+	def remove_account_by_id(self, id):
+		try:
+			user = User(id)
+		except Exception as e:
+			self.buffer_print('ERR', str(e))
+			return False
+
+		user.delete()
+		self.buffer_print('VOLTRON', f'{user.display_name} deleted, restarting.')
+		self.voltron.reset()
+		self.voltron.start()
+
 	def remove_account(self, input, command):
+		if input.isdigit():
+			return self.remove_account_by_id(int(input))
 		account_list = self.list_accounts()
 
 		def select_account(prompt):

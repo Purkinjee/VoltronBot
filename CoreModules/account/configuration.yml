@@ -1,5 +1,7 @@
 actions:
-  Add Account: account add
+  Add Account:
+    action: account add
+    alert: Please finish setup in browser and Voltron
 
 tabular-data:
   accounts:
@@ -27,7 +29,11 @@ tabular-data:
     action-detail:
       make_broadcaster:
         title: Make Broadcaster
+        action: account broadcaster {identifier}
+        confirm: Are you sure you want to make {display_name} the broadcaster account?
       make_default:
         title: Make Default
+        action: account default {identifier}
       delete:
         title: Delete Account
+        action: account delete {identifier}

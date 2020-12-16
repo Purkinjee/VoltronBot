@@ -15,10 +15,12 @@ class Api:
 		return modules
 
 	def execute_command(self, command):
-		self.xmlrpc.execute_command(command)
+		return self.xmlrpc.execute_command(command)
+
 
 	def get_module_webview(self, module_name):
-		return self.xmlrpc.get_module_webview(module_name)
+		res = self.xmlrpc.get_module_webview(module_name)
+		return res
 
 if __name__ == '__main__':
 	api = Api()

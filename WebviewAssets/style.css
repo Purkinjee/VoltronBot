@@ -76,6 +76,8 @@ table.tableView {
 	background-color: #18181B;
 	border-spacing: 0;
 	border-radius: 5px;
+
+	font-size: 0.85em;
 }
 
 table.tableView tr td,
