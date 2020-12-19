@@ -45,6 +45,7 @@ class Trigger(ModuleBase):
 		if int(event.user_id) == int(self.response_twitch_id):
 			return
 		words_re = re.findall(self.regex, event.message, re.IGNORECASE)
+
 		words = []
 		if words_re:
 			[words.append(x.lower()) for x in words_re if x.lower() not in words]
@@ -131,7 +132,7 @@ class Trigger(ModuleBase):
 		or_str = ''
 
 		for trigger in self._triggers['triggers']:
-			or_str += re.escape(trigger) + '|'
+			or_str += r'\b' + re.escape(trigger) + r'\b|'
 
 		if or_str:
 			or_str = or_str[:-1]

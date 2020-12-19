@@ -108,7 +108,7 @@ class ChatMessageParser:
 		if not re.search(r'^\d+$', end):
 			end = 100
 
-		return str(random.randrange(int(start), int(end)))
+		return str(random.randrange(int(start), int(end)+1))
 
 	def last_played(self, event, *args):
 		if len(args) != 1:

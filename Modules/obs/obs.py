@@ -265,6 +265,11 @@ class OBS(ModuleBase):
 
 		command = self._obs_data['commands'][event.command]
 
+		if command.get('broadcaster_only', False) and not event.is_broadcaster:
+			return
+		if command.get('mod_only', False) and not event.is_mod:
+			return
+
 		if not 'runtime' in self._obs_data['commands'][event.command]:
 			self._obs_data['commands'][event.command]['runtime'] = {
 				'global': 0,
