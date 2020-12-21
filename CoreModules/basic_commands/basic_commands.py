@@ -12,7 +12,6 @@ class BasicCommands(ModuleBase):
 	def setup(self):
 		## Commands are saved in the database
 		self._commands = self.get_module_data()
-		self._default_cooldown = 10
 
 		self._static_commands = {
 			'addcommand': self._add_command,
@@ -57,13 +56,6 @@ class BasicCommands(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'cooldowns',
-			self.set_cooldowns,
-			usage = f'{self.module_name} cooldowns !<command> <global cooldown> <user cooldown>',
-			description = 'Set the global and user cooldown for !<command> in seconds.'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
 			'counters',
 			self.list_counters,
 			usage = f'{self.module_name} counters',
@@ -83,44 +75,22 @@ class BasicCommands(ModuleBase):
 		## Chat command received
 		if event.command in self._static_commands:
 			self._static_commands[event.command](event)
-			return
+			return False
 
 		elif event.command in self._commands:
 			if self._commands[event.command].get('broadcaster_only', False) and not event.is_broadcaster:
-				return
+				return False
 			if self._commands[event.command].get('mod_only', False) and not event.is_mod:
-				return
-
-			if not 'runtime' in self._commands[event.command]:
-				self._commands[event.command]['runtime'] = {
-					'global': 0,
-					'user': {}
-				}
+				return False
 
 			twitch_id = self._commands[event.command].get('response_twitch_id', None)
 
-			## check user cooldown
-			user_elapsed = time.time() - self._commands[event.command]['runtime']['user'].get(event.user_id, 0)
-			user_cooldown = self._commands[event.command].get('user_cooldown', self._default_cooldown)
-			if not event.is_broadcaster and user_elapsed < user_cooldown:
-				remaining = user_cooldown - user_elapsed
-				self.send_chat_message(f"Command !{event.command} is on cooldown ({int(remaining)}s)", twitch_id)
-				return
-
-			## check global cooldown
-			global_elapsed = time.time() - self._commands[event.command]['runtime']['global']
-			global_cooldown = self._commands[event.command].get('global_cooldown', self._default_cooldown)
-			if not event.is_broadcaster and global_elapsed < global_cooldown:
-				remaining = global_cooldown - global_elapsed
-				self.send_chat_message(f"Command !{event.command} is on cooldown ({int(remaining)}s)", twitch_id)
-				return
-
 			for response in self._commands[event.command]['response']:
 				self.send_chat_message(response, twitch_id=twitch_id, event=event)
-			self._commands[event.command]['runtime']['global'] = time.time()
-			self._commands[event.command]['runtime']['user'][event.user_id] = time.time()
 
 			self.save_module_data(self._commands)
+
+			return True
 
 	def _list_commands(self, event):
 		commands = self.event_loop.get_all_commands(event.user_id, event.is_mod, event.is_broadcaster)
@@ -182,30 +152,6 @@ class BasicCommands(ModuleBase):
 		del self._commands[command]
 		self.save_module_data(self._commands)
 		self.send_chat_message(f'Command !{command} successfully deleted!')
-
-	def set_cooldowns(self, input, command):
-		match = re.search(r'^!([^ ]+) ([0-9]+) ([0-9]+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', 'Invalid paramaters')
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		if not command in self._commands:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
-			return
-
-		global_cooldown = int(match.group(2))
-		user_cooldown = int(match.group(3))
-
-		self._commands[command]['global_cooldown'] = global_cooldown
-		self._commands[command]['user_cooldown'] = user_cooldown
-
-		self.buffer_print('VOLTRON', f'Cooldowns set for command !{command}')
-		self.buffer_print('VOLTRON', f'global = {global_cooldown}')
-		self.buffer_print('VOLTRON', f'user = {user_cooldown}')
-
-		self.save_module_data(self._commands)
 
 	def toggle_mod_only(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
@@ -307,8 +253,6 @@ class BasicCommands(ModuleBase):
 
 		mod_only = self._commands[command].get('mod_only', False)
 		broadcaster_only = self._commands[command].get('broadcaster_only', False)
-		user_cooldown = self._commands[command].get('user_cooldown', 'Not Set')
-		global_cooldown = self._commands[command].get('global_cooldown', f'Default ({self._default_cooldown})')
 		twitch_id = self._commands[command].get('response_twitch_id', None)
 		twitch_user_name = "Default"
 		if twitch_id:
@@ -320,25 +264,10 @@ class BasicCommands(ModuleBase):
 		self.buffer_print('VOLTRON', f'  Response Account: {twitch_user_name}')
 		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
 		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
-		self.buffer_print('VOLTRON', f'  Global Cooldown: {global_cooldown}')
-		self.buffer_print('VOLTRON', f'  User Cooldown: {user_cooldown}')
 		self.buffer_print('VOLTRON',  '  Response:')
 
 		for line in self._commands[command]['response']:
 			self.buffer_print('VOLTRON', f'    {line}')
-
-	def remove_expired_cooldowns(self):
-		for command in self._commands:
-			user_cooldown = self._commands[command].get('user_cooldown', self._default_cooldown)
-			user_cooldowns = {}
-			if not 'runtime' in self._commands[command] or not 'user' in self._commands[command]['runtime']:
-				continue
-
-			for user_id in self._commands[command]['runtime']['user']:
-				if (time.time() - self._commands[command]['runtime']['user'][user_id]) < user_cooldown:
-					user_cooldowns[user_id] = self._commands[command]['runtime']['user'][user_id]
-
-			self._commands[command]['runtime']['user'] = user_cooldowns
 
 	def _print_commands(self):
 		for command in sorted(self._commands):
@@ -353,5 +282,4 @@ class BasicCommands(ModuleBase):
 			self.buffer_print('VOLTRON', output_str)
 
 	def shutdown(self):
-		self.remove_expired_cooldowns()
 		self.save_module_data(self._commands)

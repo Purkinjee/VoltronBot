@@ -163,7 +163,6 @@ class OBS(ModuleBase):
 		self._obs_data = self.get_module_data()
 		self.obs_queue = Queue()
 		self.obs_thread = OBSThread(self.obs_queue, self.voltron.buffer_queue)
-		self._default_cooldown = 10
 
 		if not 'commands' in self._obs_data:
 			self._obs_data['commands'] = {}
@@ -243,13 +242,6 @@ class OBS(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'cooldowns',
-			self._set_cooldowns,
-			usage = f'{self.module_name} cooldowns !<command> <global cooldown> <user cooldown>',
-			description = 'Set the global and user cooldown for !<command> in seconds.'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
 			'delete',
 			self._delete_command,
 			usage = f'{self.module_name} delete !<command>',
@@ -261,45 +253,20 @@ class OBS(ModuleBase):
 
 	def command(self, event):
 		if not event.command in self._obs_data['commands']:
-			return
+			return False
 
 		command = self._obs_data['commands'][event.command]
 
 		if command.get('broadcaster_only', False) and not event.is_broadcaster:
-			return
+			return False
 		if command.get('mod_only', False) and not event.is_mod:
-			return
-
-		if not 'runtime' in self._obs_data['commands'][event.command]:
-			self._obs_data['commands'][event.command]['runtime'] = {
-				'global': 0,
-				'user': {}
-			}
-
-		## check user cooldown
-		user_elapsed = time.time() - self._obs_data['commands'][event.command]['runtime']['user'].get(event.user_id, 0)
-		user_cooldown = self._obs_data['commands'][event.command].get('user_cooldown', 0)
-		if not event.is_broadcaster and user_elapsed < user_cooldown:
-			remaining = user_cooldown - user_elapsed
-			self.send_chat_message(f"Command !{event.command} is on cooldown ({int(remaining)}s)")
-			return
-
-		## check global cooldown
-		global_elapsed = time.time() - self._obs_data['commands'][event.command]['runtime']['global']
-		global_cooldown = self._obs_data['commands'][event.command].get('global_cooldown', self._default_cooldown)
-		if not event.is_broadcaster and global_elapsed < global_cooldown:
-			remaining = global_cooldown - global_elapsed
-			self.send_chat_message(f"Command !{event.command} is on cooldown ({int(remaining)}s)")
-			return
+			return False
 
 		self.obs_queue.put((command, self.obs_ws))
 
-		self._obs_data['commands'][event.command]['runtime']['global'] = time.time()
-		if user_cooldown:
-			self._obs_data['commands'][event.command]['runtime']['user'][event.user_id] = time.time()
-
 		self.save_module_data(self._obs_data)
 
+		return True
 
 	def _add_timed_source(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
@@ -462,14 +429,11 @@ class OBS(ModuleBase):
 
 		mod_only = self._obs_data['commands'][command].get('mod_only', False)
 		broadcaster_only = self._obs_data['commands'][command].get('broadcaster_only', False)
-		user_cooldown = self._obs_data['commands'][command].get('user_cooldown', 'Not Set')
-		global_cooldown = self._obs_data['commands'][command].get('global_cooldown', f'Default ({self._default_cooldown})')
 
 		self.buffer_print('VOLTRON', f'Details for command !{command}:')
 		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
 		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
-		self.buffer_print('VOLTRON', f'  Global Cooldown: {global_cooldown}')
-		self.buffer_print('VOLTRON', f'  User Cooldown: {user_cooldown}')
+
 		for key in self._obs_data['commands'][command]:
 			if key in ('mod_only', 'broadcaster_only', 'user_cooldown', 'global_cooldown'):
 				continue
@@ -515,30 +479,6 @@ class OBS(ModuleBase):
 
 		self.buffer_print('VOLTRON', f'Permission changed for !{command} (broadcaster_only={broadcaster_only})')
 
-	def _set_cooldowns(self, input, command):
-		match = re.search(r'^!([^ ]+) (\d+) (\d+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', 'Invalid paramaters')
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		if not command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
-			return
-
-		global_cooldown = int(match.group(2))
-		user_cooldown = int(match.group(3))
-
-		self._obs_data['commands'][command]['global_cooldown'] = global_cooldown
-		self._obs_data['commands'][command]['user_cooldown'] = user_cooldown
-
-		self.buffer_print('VOLTRON', f'Cooldowns set for command !{command}')
-		self.buffer_print('VOLTRON', f'global = {global_cooldown}')
-		self.buffer_print('VOLTRON', f'user = {user_cooldown}')
-
-		self.save_module_data(self._obs_data)
-
 	def _ws_connect(self):
 		if self._ws:
 			self._ws.close()
@@ -571,24 +511,10 @@ class OBS(ModuleBase):
 		except socket.error as error:
 			self.buffer_print('ERR', error)
 
-	def remove_expired_cooldowns(self):
-		for command in self._obs_data['commands']:
-			user_cooldown = self._obs_data['commands'][command].get('user_cooldown', 0)
-			user_cooldowns = {}
-			if not 'runtime' in self._obs_data['commands'][command] or not 'user' in self._obs_data['commands'][command]['runtime']:
-				continue
-
-			for user_id in self._obs_data['commands'][command]['runtime']['user']:
-				if (time.time() - self._obs_data['commands'][command]['runtime']['user'][user_id]) < user_cooldown:
-					user_cooldowns[user_id] = self._obs_data['commands'][command]['runtime']['user'][user_id]
-
-			self._obs_data['commands'][command]['runtime']['user'] = user_cooldowns
-
 	def shutdown(self):
 		self.obs_queue.put('shutdown')
 		self.obs_thread.shutdown()
 		self.obs_thread.join()
-		self.remove_expired_cooldowns()
 		self.save_module_data(self._obs_data)
 
 	@property

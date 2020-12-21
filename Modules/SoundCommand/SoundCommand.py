@@ -10,7 +10,6 @@ class SoundCommand(ModuleBase):
 	module_name = "sound_command"
 	def setup(self):
 		self._commands = self.get_module_data()
-		self.default_cooldown = 10
 
 		if not os.path.isdir(self.media_directory):
 			os.makedirs(self.media_directory)
@@ -75,13 +74,6 @@ class SoundCommand(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'cooldown',
-			self._set_cooldown,
-			usage = f'{self.module_name} cooldown !<command> <seconds>',
-			description = 'Set cooldown for command in seconds.'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
 			'dir',
 			self._show_directory,
 			usage = f'{self.module_name} dir',
@@ -93,30 +85,24 @@ class SoundCommand(ModuleBase):
 	def command(self, event):
 		command = self._commands['commands'].get(event.command, None)
 		if not command:
-			return
+			return False
 
 		if command.get('mod_only', False) and not event.is_mod:
-			return
+			return False
 
 		if command.get('broadcaster_only', False) and not event.is_broadcaster:
-			return
-
-		cooldown = command.get('cooldown', self.default_cooldown)
-		elapsed = time.time() - command.get('runtime', 0)
-		if elapsed < cooldown:
-			remaining = int(cooldown - elapsed)
-			self.send_chat_message(f'Command !{event.command} is on cooldown ({remaining}s)')
-			return
+			return False
 
 		sound_path = f"{self.media_directory}\\{command['sound_file']}"
 		volume = command.get('volume', 100)
 
 		if not os.path.isfile(sound_path):
 			self.buffer_print('ERR', f'{sound_path} does not exist')
-			return
+			return True
 
-		self._commands['commands'][event.command]['runtime'] = time.time()
 		self.play_audio(sound_path, device=self.audio_device, volume=volume)
+
+		return True
 
 	def _select_audio_device(self, input, command):
 		devices = sounddevice.query_devices()
@@ -226,13 +212,11 @@ class SoundCommand(ModuleBase):
 		media_file = self._commands['commands'][command]['sound_file']
 		mod_only = self._commands['commands'][command].get('mod_only', False)
 		broadcaster_only = self._commands['commands'][command].get('broadcaster_only', False)
-		cooldown = self._commands['commands'][command].get('cooldown', 'Default')
 
 		self.buffer_print('VOLTRON', f'Details for !{command}:')
 		self.buffer_print('VOLTRON', f'  File: {media_file}')
 		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
 		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
-		self.buffer_print('VOLTRON', f'  Cooldown: {cooldown}')
 
 
 	def _delete_command(self, input, command):
@@ -283,22 +267,6 @@ class SoundCommand(ModuleBase):
 		self.save_module_data(self._commands)
 
 		self.buffer_print('VOLTRON', f'Command !{selected_command} updated (broadcaster_only={broadcaster_only})')
-
-	def _set_cooldown(self, input, command):
-		match = re.search(r'^!([^ ]+) ([0-9]+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		cooldown = int(match.group(2))
-
-		if not command in self._commands['commands']:
-			self.buffer_print('VOLTRON', f'Unkown command !{command}')
-			return
-
-		self._commands['commands'][command]['cooldown'] = cooldown
-		self.buffer_print('VOLTRON', f'Cooldown for !{command} set to {cooldown}s')
 
 	def _show_directory(self, input, command):
 		self.buffer_print('VOLTRON', 'Media Directory:')

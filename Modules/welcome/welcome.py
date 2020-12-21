@@ -15,7 +15,6 @@ class Welcome(ModuleBase):
 
 		self._sound_data = self.get_module_data()
 		self._sound_command = self._sound_data.get('sound_command', 'hi')
-		self._sound_cooldown = 300
 		self._stream_online = False
 		if not 'user_sounds' in self._sound_data.keys():
 			self._sound_data['user_sounds'] = {}
@@ -104,20 +103,14 @@ class Welcome(ModuleBase):
 		self.event_listen(EVT_STREAM_STATUS, self.status_change)
 
 	def first_message(self, event, run_by_command=False, testing=False):
+		handled = False
 		if not self._stream_online and not testing:
-			return
+			return False
 		if not run_by_command:
 			self.buffer_print('VOLTRON', f'First message: {event.display_name}')
 		sound_played = False
 		if event.user_id in self._sound_data['user_sounds']:
 			data = self._sound_data['user_sounds'][event.user_id]
-			last_played = data.get('last_played', 0)
-			elapsed = time.time() - last_played
-			if elapsed < self._sound_cooldown:
-				if run_by_command and not testing:
-					remaining = self._sound_cooldown - elapsed
-					self.send_chat_message(f"@{event.display_name} Command !{event.command} is on cooldown ({int(remaining)}s)")
-				return
 
 			if data.get('sound_file', None):
 				sound_path = f"{self.media_directory}\\{data['sound_file']}"
@@ -132,12 +125,11 @@ class Welcome(ModuleBase):
 						volume=volume
 					)
 					sound_played = True
+					handled = True
 
 			if data.get('message', None):
 				self.send_chat_message(data['message'], event=event)
-
-			if not testing:
-				self._sound_data['user_sounds'][event.user_id]['last_played'] = time.time()
+				handled = True
 
 		since_alert = time.time() - self._last_alert
 		if not sound_played and self.alert_sound_device is not None and self.alert_sound and not run_by_command and since_alert > 30:
@@ -148,6 +140,8 @@ class Welcome(ModuleBase):
 				self.play_audio(alert_path, device=self.alert_sound_device)
 				self._last_alert = time.time()
 
+		return handled
+
 	def status_change(self, event):
 		if event.is_live:
 			self._stream_online = True
@@ -156,9 +150,10 @@ class Welcome(ModuleBase):
 
 	def command(self, event):
 		if event.command != self._sound_command:
-			return
+			return False
 
-		self.first_message(event, run_by_command=True)
+		return self.first_message(event, run_by_command=True)
+
 
 	def _set_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)

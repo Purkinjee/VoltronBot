@@ -22,17 +22,17 @@ class Timer(ModuleBase):
 
 	def command(self, event):
 		if event.command != 'timer':
-			return
+			return False
 
 		if self.broadcaster_only and not event.is_broadcaster:
-			return
+			return False
 
 		if self.mod_only and not event.is_mod:
-			return
+			return False
 
 		match = re.search(r'^([\d]+) ?(.+)?$', event.args)
 		if not match:
-			return
+			return False
 
 		minutes = int(match.group(1))
 		message = match.group(2)
@@ -46,6 +46,8 @@ class Timer(ModuleBase):
 		self.save_module_data(self._timer_data)
 
 		self.send_chat_message(f'@{event.display_name} timer set for {minutes} minute(s)')
+
+		return True
 
 	def timer_check(self, event):
 		to_remove = []

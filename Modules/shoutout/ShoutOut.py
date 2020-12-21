@@ -36,7 +36,7 @@ class ShoutOut(ModuleBase):
 
 	def command(self, event):
 		if not event.is_mod:
-			return
+			return False
 
 		if event.command == self.so_command:
 			match = re.search(r'^@?([^ ]+)$', event.args)
@@ -44,7 +44,7 @@ class ShoutOut(ModuleBase):
 				so_user = match.group(1)
 				twitch_user = self.twitch_api.get_user(so_user)
 				if not twitch_user:
-					return
+					return False
 
 				twitch_channel = self.twitch_api.get_channel(twitch_user['id'])
 
@@ -56,6 +56,10 @@ class ShoutOut(ModuleBase):
 
 				twitch_id = self._shoutout_data.get('account', None)
 				self.send_chat_message(chat_str, twitch_id)
+
+				return True
+
+		return False
 
 	def set_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)

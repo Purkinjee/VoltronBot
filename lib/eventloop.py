@@ -10,7 +10,7 @@ from audio2numpy.exceptions import AudioFormatError
 import numpy
 from math import sqrt
 
-from base.events import Event, TimerEvent, StreamStatusEvent
+from base.events import Event, TimerEvent, StreamStatusEvent, EVT_CHATCOMMAND
 from lib.common import get_db, get_broadcaster, get_module_directory
 from lib.TwitchAPIHelper import TwitchAPIHelper
 import config
@@ -22,13 +22,14 @@ class BroadcastStatusThread(threading.Thread):
 		self.event_queue = event_queue
 		self.buffer_queue = buffer_queue
 		self.last_check = 0
+		self.last_changed = 0
 		self._keep_listening = True
 
 		self.broadcast_id = None
 
 	def run(self):
 		while self._keep_listening:
-			if time.time() - self.last_check > 30:
+			if (time.time() - self.last_check > 30) and (time.time() - self.last_changed > 180):
 				broadcaster = get_broadcaster()
 				if broadcaster:
 					api = TwitchAPIHelper(broadcaster.oauth_tokens)
@@ -41,6 +42,7 @@ class BroadcastStatusThread(threading.Thread):
 								started_at = stream['started_at'],
 								viewer_count = stream['viewer_count']
 							))
+							self.last_changed = time.time()
 							self.buffer_queue.put(('VOLTRON', 'Stream is now live!'))
 							self.buffer_queue.put(('DEBUG', f"Stream ID: {stream['id']}"))
 
@@ -49,6 +51,7 @@ class BroadcastStatusThread(threading.Thread):
 					else:
 						if self.broadcast_id or self.last_check == 0:
 							self.event_queue.put(StreamStatusEvent())
+							self.last_changed = time.time()
 							self.buffer_queue.put(('INFO', 'Stream is offline.'))
 
 						self.broadcast_id = None
@@ -127,6 +130,7 @@ class EventLoop(threading.Thread):
 		self._core_mod_names = []
 
 		self.modules = []
+		self.cooldown_module = None
 		self.voltron = voltron
 
 		self.registered_listeners = {
@@ -147,6 +151,9 @@ class EventLoop(threading.Thread):
 			mod_instance = import_module('CoreModules.{}'.format(mod)).VoltronModule(self, self.voltron)
 			self._core_mod_names.append(mod_instance.module_name)
 			self.modules.append(mod_instance)
+
+			if mod_instance.module_name == 'cooldown':
+				self.cooldown_module = mod_instance
 
 		self.update_modules()
 
@@ -226,9 +233,17 @@ class EventLoop(threading.Thread):
 					module.shutdown()
 				break
 			elif isinstance(event, Event):
+				if event.type == EVT_CHATCOMMAND and self.cooldown_module:
+					if self.cooldown_module.event_on_cooldown(event):
+						continue
 				callbacks = self.registered_listeners.get(event.type, [])
+				handled = False
 				for callback in callbacks:
-					callback(event)
+					if callback(event):
+						handled = True
+
+				if event.type == EVT_CHATCOMMAND and self.cooldown_module and handled:
+					self.cooldown_module.update_runtimes(event)
 				#self.buffer_queue.put(('INFO', event.type))
 		self.timer_thread.stop()
 		self.timer_thread.join()
