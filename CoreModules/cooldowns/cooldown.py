@@ -75,6 +75,8 @@ class CooldownModule(ModuleBase):
 		self.save_module_data(self._cooldown_data)
 
 	def event_on_cooldown(self, event):
+		if event.is_broadcaster:
+			return False
 		if not event.command in self._cooldown_data['runtimes']:
 			return False
 
