@@ -435,7 +435,7 @@ class OBS(ModuleBase):
 		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
 
 		for key in self._obs_data['commands'][command]:
-			if key in ('mod_only', 'broadcaster_only', 'user_cooldown', 'global_cooldown'):
+			if key in ('mod_only', 'broadcaster_only', 'user_cooldown', 'global_cooldown', 'runtime'):
 				continue
 
 			self.buffer_print('VOLTRON', f"  {key}: {self._obs_data['commands'][command][key]}")
