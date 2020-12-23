@@ -60,20 +60,6 @@ class SoundCommand(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'mod_only',
-			self._toggle_mod_only,
-			usage = f'{self.module_name} mod_only !<command>',
-			description = 'Toggle mod only permission for command'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
-			'broadcaster_only',
-			self._toggle_broadcaster_only,
-			usage = f'{self.module_name} broadcaster_only !<command>',
-			description = 'Toggle broadcaster only permission for command'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
 			'dir',
 			self._show_directory,
 			usage = f'{self.module_name} dir',
@@ -85,12 +71,6 @@ class SoundCommand(ModuleBase):
 	def command(self, event):
 		command = self._commands['commands'].get(event.command, None)
 		if not command:
-			return False
-
-		if command.get('mod_only', False) and not event.is_mod:
-			return False
-
-		if command.get('broadcaster_only', False) and not event.is_broadcaster:
 			return False
 
 		sound_path = f"{self.media_directory}\\{command['sound_file']}"
@@ -210,13 +190,9 @@ class SoundCommand(ModuleBase):
 			return
 
 		media_file = self._commands['commands'][command]['sound_file']
-		mod_only = self._commands['commands'][command].get('mod_only', False)
-		broadcaster_only = self._commands['commands'][command].get('broadcaster_only', False)
 
 		self.buffer_print('VOLTRON', f'Details for !{command}:')
 		self.buffer_print('VOLTRON', f'  File: {media_file}')
-		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
-		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
 
 
 	def _delete_command(self, input, command):
@@ -233,40 +209,6 @@ class SoundCommand(ModuleBase):
 		del self._commands['commands'][selected_command]
 		self.save_module_data(self._commands)
 		self.buffer_print('VOLTRON', f'Command !{selected_command} deleted')
-
-	def _toggle_mod_only(self, input, command):
-		match = re.search(r'^!([^ ]+)$', input.strip())
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		selected_command = match.group(1)
-		if not selected_command in self._commands['commands'].keys():
-			self.buffer_print('VOLTRON', f'Unkown command !{selected_command}')
-			return
-
-		mod_only = not self._commands['commands'][selected_command].get('mod_only', False)
-		self._commands['commands'][selected_command]['mod_only'] = mod_only
-		self.save_module_data(self._commands)
-
-		self.buffer_print('VOLTRON', f'Command !{selected_command} updated (mod_only={mod_only})')
-
-	def _toggle_broadcaster_only(self, input, command):
-		match = re.search(r'^!([^ ]+)$', input.strip())
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		selected_command = match.group(1)
-		if not selected_command in self._commands['commands'].keys():
-			self.buffer_print('VOLTRON', f'Unkown command !{selected_command}')
-			return
-
-		broadcaster_only = not self._commands['commands'][selected_command].get('broadcaster_only', False)
-		self._commands['commands'][selected_command]['broadcaster_only'] = broadcaster_only
-		self.save_module_data(self._commands)
-
-		self.buffer_print('VOLTRON', f'Command !{selected_command} updated (broadcaster_only={broadcaster_only})')
 
 	def _show_directory(self, input, command):
 		self.buffer_print('VOLTRON', 'Media Directory:')

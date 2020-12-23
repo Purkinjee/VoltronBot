@@ -42,20 +42,6 @@ class BasicCommands(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'mod_only',
-			self.toggle_mod_only,
-			usage = f'{self.module_name} mod_only !<command>',
-			description = 'Toggle mod only permission for command'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
-			'broadcaster_only',
-			self.toggle_broadcaster_only,
-			usage = f'{self.module_name} broadcaster_only !<command>',
-			description = 'Toggle broadcaster only permission for command'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
 			'counters',
 			self.list_counters,
 			usage = f'{self.module_name} counters',
@@ -78,11 +64,6 @@ class BasicCommands(ModuleBase):
 			return False
 
 		elif event.command in self._commands:
-			if self._commands[event.command].get('broadcaster_only', False) and not event.is_broadcaster:
-				return False
-			if self._commands[event.command].get('mod_only', False) and not event.is_mod:
-				return False
-
 			twitch_id = self._commands[event.command].get('response_twitch_id', None)
 
 			for response in self._commands[event.command]['response']:
@@ -153,44 +134,6 @@ class BasicCommands(ModuleBase):
 		self.save_module_data(self._commands)
 		self.send_chat_message(f'Command !{command} successfully deleted!')
 
-	def toggle_mod_only(self, input, command):
-		match = re.search(r'^!([^ ]+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		if not command in self._commands:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
-			return
-
-		mod_only = self._commands[command].get('mod_only', False)
-
-		mod_only = not mod_only
-		self._commands[command]['mod_only'] = mod_only
-		self.save_module_data(self._commands)
-
-		self.buffer_print('VOLTRON', f'Permission changed for !{command} (mod_only={mod_only})')
-
-	def toggle_broadcaster_only(self, input, command):
-		match = re.search(r'^!([^ ]+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		if not command in self._commands:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
-			return
-
-		broadcaster_only = self._commands[command].get('broadcaster_only', False)
-
-		broadcaster_only = not broadcaster_only
-		self._commands[command]['broadcaster_only'] = broadcaster_only
-		self.save_module_data(self._commands)
-
-		self.buffer_print('VOLTRON', f'Permission changed for !{command} (broadcaster_only={broadcaster_only})')
-
 	def command_account(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
@@ -251,8 +194,6 @@ class BasicCommands(ModuleBase):
 			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
 			return
 
-		mod_only = self._commands[command].get('mod_only', False)
-		broadcaster_only = self._commands[command].get('broadcaster_only', False)
 		twitch_id = self._commands[command].get('response_twitch_id', None)
 		twitch_user_name = "Default"
 		if twitch_id:
@@ -262,8 +203,6 @@ class BasicCommands(ModuleBase):
 
 		self.buffer_print('VOLTRON', f'Details for command !{command}:')
 		self.buffer_print('VOLTRON', f'  Response Account: {twitch_user_name}')
-		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
-		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
 		self.buffer_print('VOLTRON',  '  Response:')
 
 		for line in self._commands[command]['response']:
@@ -274,10 +213,6 @@ class BasicCommands(ModuleBase):
 			output_str = "  !{command}".format(
 				command = command
 			)
-			if self._commands[command].get('broadcaster_only', False):
-				output_str += ' (broadcaster only)'
-			if self._commands[command].get('mod_only', False):
-				output_str += ' (mod only)'
 
 			self.buffer_print('VOLTRON', output_str)
 

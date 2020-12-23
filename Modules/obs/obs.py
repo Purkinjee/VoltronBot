@@ -228,20 +228,6 @@ class OBS(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'mod_only',
-			self._toggle_mod_only,
-			usage = f'{self.module_name} mod_only !<command>',
-			description = 'Toggle mod only permission for command'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
-			'broadcaster_only',
-			self._toggle_broadcaster_only,
-			usage = f'{self.module_name} broadcaster_only !<command>',
-			description = 'Toggle broadcaster only permission for command'
-		))
-
-		self.register_admin_command(ModuleAdminCommand(
 			'delete',
 			self._delete_command,
 			usage = f'{self.module_name} delete !<command>',
@@ -256,11 +242,6 @@ class OBS(ModuleBase):
 			return False
 
 		command = self._obs_data['commands'][event.command]
-
-		if command.get('broadcaster_only', False) and not event.is_broadcaster:
-			return False
-		if command.get('mod_only', False) and not event.is_mod:
-			return False
 
 		self.obs_queue.put((command, self.obs_ws))
 
@@ -407,10 +388,6 @@ class OBS(ModuleBase):
 			output_str = "  !{command}".format(
 				command = command
 			)
-			if self._obs_data['commands'][command].get('broadcaster_only', False):
-				output_str += ' (broadcaster only)'
-			if self._obs_data['commands'][command].get('mod_only', False):
-				output_str += ' (mod only)'
 
 			self.buffer_print('VOLTRON', output_str)
 		self.buffer_print('VOLTRON', '')
@@ -427,12 +404,7 @@ class OBS(ModuleBase):
 			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
 			return
 
-		mod_only = self._obs_data['commands'][command].get('mod_only', False)
-		broadcaster_only = self._obs_data['commands'][command].get('broadcaster_only', False)
-
 		self.buffer_print('VOLTRON', f'Details for command !{command}:')
-		self.buffer_print('VOLTRON', f'  Mod Only: {mod_only}')
-		self.buffer_print('VOLTRON', f'  Broadcaster Only: {broadcaster_only}')
 
 		for key in self._obs_data['commands'][command]:
 			if key in ('mod_only', 'broadcaster_only', 'user_cooldown', 'global_cooldown', 'runtime'):
@@ -440,44 +412,6 @@ class OBS(ModuleBase):
 
 			self.buffer_print('VOLTRON', f"  {key}: {self._obs_data['commands'][command][key]}")
 
-
-	def _toggle_mod_only(self, input, command):
-		match = re.search(r'^!([^ ]+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		if not command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
-			return
-
-		mod_only = self._obs_data['commands'][command].get('mod_only', False)
-
-		mod_only = not mod_only
-		self._obs_data['commands'][command]['mod_only'] = mod_only
-		self.save_module_data(self._obs_data)
-
-		self.buffer_print('VOLTRON', f'Permission changed for !{command} (mod_only={mod_only})')
-
-	def _toggle_broadcaster_only(self, input, command):
-		match = re.search(r'^!([^ ]+)$', input)
-		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			return
-
-		command = match.group(1)
-		if not command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
-			return
-
-		broadcaster_only = self._obs_data['commands'][command].get('broadcaster_only', False)
-
-		broadcaster_only = not broadcaster_only
-		self._obs_data['commands'][command]['broadcaster_only'] = broadcaster_only
-		self.save_module_data(self._obs_data)
-
-		self.buffer_print('VOLTRON', f'Permission changed for !{command} (broadcaster_only={broadcaster_only})')
 
 	def _ws_connect(self):
 		if self._ws:

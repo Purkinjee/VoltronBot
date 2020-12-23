@@ -35,9 +35,6 @@ class ShoutOut(ModuleBase):
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
-		if not event.is_mod:
-			return False
-
 		if event.command == self.so_command:
 			match = re.search(r'^@?([^ ]+)$', event.args)
 			if match:

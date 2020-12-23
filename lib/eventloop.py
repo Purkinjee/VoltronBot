@@ -131,6 +131,7 @@ class EventLoop(threading.Thread):
 
 		self.modules = []
 		self.cooldown_module = None
+		self.permission_module = None
 		self.voltron = voltron
 
 		self.registered_listeners = {
@@ -154,6 +155,8 @@ class EventLoop(threading.Thread):
 
 			if mod_instance.module_name == 'cooldown':
 				self.cooldown_module = mod_instance
+			elif mod_instance.module_name == 'permission':
+				self.permission_module = mod_instance
 
 		self.update_modules()
 
@@ -233,6 +236,9 @@ class EventLoop(threading.Thread):
 					module.shutdown()
 				break
 			elif isinstance(event, Event):
+				if event.type == EVT_CHATCOMMAND and self.permission_module:
+					if not self.permission_module.has_command_permission(event):
+						continue
 				if event.type == EVT_CHATCOMMAND and self.cooldown_module:
 					if self.cooldown_module.event_on_cooldown(event):
 						continue
