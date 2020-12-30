@@ -22,7 +22,7 @@ def debug(message):
 		print('DEBUG: ', message)
 
 def get_module_directory(module = None):
-	module_dir = config.APP_DIRECTORY + '\\Modules'
+	module_dir = config.APP_DIRECTORY + '\\UserModules'
 	if module:
 		module_dir += f'\\Modules\\{module}'
 

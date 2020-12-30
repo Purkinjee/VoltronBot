@@ -15,6 +15,8 @@ from lib.common import get_db, get_broadcaster, get_module_directory
 from lib.TwitchAPIHelper import TwitchAPIHelper
 import config
 
+sys.path.append(config.APP_DIRECTORY)
+
 class BroadcastStatusThread(threading.Thread):
 	def __init__(self, event_queue, buffer_queue):
 		threading.Thread.__init__(self)
@@ -176,13 +178,18 @@ class EventLoop(threading.Thread):
 		mod_dir = get_module_directory()
 
 		core_mods = next(os.walk('./Modules'))[1]
-		core_mods += next(os.walk(mod_dir))[1]
+		user_mods = next(os.walk(mod_dir))[1]
+		core_mods += user_mods
 		module_names = []
 		for mod in core_mods:
 			if mod[0] == '_':
 				continue
 
-			mod_import = import_module('Modules.{}'.format(mod)).VoltronModule
+			if not mod in user_mods:
+				mod_import = import_module('Modules.{}'.format(mod)).VoltronModule
+			else:
+				mod_import = import_module('UserModules.{}'.format(mod)).VoltronModule
+
 			mod_name = mod_import.module_name
 			if mod_name in self._core_mod_names:
 				self.buffer_queue.put(('ERR', f'Invalid Module Name: {mod_name}'))
