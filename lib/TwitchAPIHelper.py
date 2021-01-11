@@ -62,6 +62,24 @@ class TwitchAPIHelper:
 
 		return data[0]
 
+	def get_rewards(self, broadcaster_id):
+		try:
+			req = requests.get(
+				'https://api.twitch.tv/helix/channel_points/custom_rewards',
+				headers = {
+					'client-id': self.__client_id,
+					'Authorization': 'Bearer {}'.format(self.oauth_tokens.token(self.__fernet_key))
+				},
+				params = { 'broadcaster_id': broadcaster_id }
+			)
+		except requests.exceptions.ConnectionError:
+			return False
+
+		resp = json.loads(req.text)
+		data = resp.get('data', None)
+
+		return data
+
 	def get_stream(self, broadcaster_id):
 		try:
 			req = requests.get(

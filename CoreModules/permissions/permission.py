@@ -40,6 +40,8 @@ class PermissionModule(ModuleBase):
 		))
 
 	def has_command_permission(self, event):
+		if event.bypass_permissions:
+			return True
 		command_permission_data = self._permission_data['commands'].get(event.command, {})
 		permission = command_permission_data.get('basic', self.default_permission)
 

@@ -5,6 +5,9 @@ EVT_CHATMESSAGE = 'CHATMESSAGE'
 EVT_TIMER = 'TIMER'
 EVT_STREAM_STATUS = 'STREAM_STATUS'
 EVT_FIRST_MESSAGE = 'FIRST_MESSAGE'
+EVT_SUBSCRIPTION = 'SUBSCRIPTION'
+EVT_BITS = 'BITS'
+EVT_POINT_REDEMPTION = 'POINT_REDEMPTION'
 
 
 class Event:
@@ -18,7 +21,7 @@ class ChatCommandEvent(Event):
 	Chat command event. This event is used for any line in chat beginning with !
 	"""
 	type = EVT_CHATCOMMAND
-	def __init__(self, command, args, display_name, user_id, is_mod, is_broadcaster):
+	def __init__(self, command, args, display_name, user_id, is_mod, is_broadcaster, bypass_permissions = False):
 		self.command = command.lower().strip()
 		self.args = args
 		self.message = args
@@ -26,6 +29,7 @@ class ChatCommandEvent(Event):
 		self.user_id = user_id
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
+		self.bypass_permissions = bypass_permissions
 
 class ChatMessageEvent(Event):
 	type = EVT_CHATMESSAGE
@@ -78,3 +82,71 @@ class FirstMessageEvent(Event):
 		self.user_id = user_id
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
+
+class SubscriptionEvent(Event):
+	type = EVT_SUBSCRIPTION
+	def __init__(self, context, user_id, user_name, display_name, recipient_id,
+		recipient_user_name, recipient_display_name, sub_plan, sub_plan_name,
+		message, cumulative_months, streak_months, is_gift, duration):
+
+		self.context = context
+		self.user_id = user_id
+		self.user_name = user_name
+		self.display_name = display_name
+
+		self.recipient_id = recipient_id
+		self.recipient_user_name = recipient_user_name
+		self.recipient_display_name = recipient_display_name
+
+		self.sub_plan = sub_plan
+		self.sub_plan_name = sub_plan_name
+
+		self.message = message
+
+		self.cumulative_months = cumulative_months
+		self.streak_months = streak_months
+
+		self.is_gift = is_gift
+		self.duration = duration
+
+	@property
+	def is_anonymous(self):
+		return self.context == 'anonsubgift'
+
+	@property
+	def sub_tier_name(self):
+		return {
+			'prime': 'Prime',
+			'1000': 'Tier 1',
+			'2000': 'Tier 2',
+			'3000': 'Tier 3'
+		}.get(str(self.sub_plan).lower(), 'Unknown')
+
+class BitsEvent(Event):
+	type = EVT_BITS
+	def __init__(self, user_id, user_name, display_name, bits_used, message,
+		is_anonymous, total_bits_used):
+		self.user_id = user_id
+		self.user_name = user_name
+		self.display_name = display_name
+
+		self.bits_used = bits_used
+		self.message = message
+		self.is_anonymous = is_anonymous
+		self.total_bits_used = total_bits_used
+
+class ChannelPointRedemption(Event):
+	type = EVT_POINT_REDEMPTION
+	def __init__(self, user_id, user_name, display_name, reward_id, title,
+		prompt, cost, user_input):
+
+		self.user_id = user_id
+		self.user_name = user_name
+		self.display_name = display_name
+
+		self.reward_id = reward_id
+		self.title = title
+		self.cost = cost
+
+		self.prompt = prompt
+		self.user_input = user_input

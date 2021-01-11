@@ -141,7 +141,10 @@ class EventLoop(threading.Thread):
 			'CHATMESSAGE' : [],
 			'TIMER' : [],
 			'STREAM_STATUS': [],
-			'FIRST_MESSAGE': []
+			'FIRST_MESSAGE': [],
+			'SUBSCRIPTION': [],
+			'BITS': [],
+			'POINT_REDEMPTION': []
 		}
 
 		self._keep_listening = True

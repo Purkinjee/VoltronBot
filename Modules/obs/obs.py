@@ -12,16 +12,22 @@ import threading
 from queue import Queue
 
 class OBSThread(threading.Thread):
-	def __init__(self, obs_queue, buffer_queue):
+	def __init__(self, obs_queue, buffer_queue, host, port, password):
 		threading.Thread.__init__(self)
 		self.obs_queue = obs_queue
 		self.buffer_queue = buffer_queue
 		self._keep_running = True
 		self.errors = False
 
+		self.host = host
+		self.port = port
+		self.password = password
+
 		self._render_end_times = {}
 
 		self._call_id = 1000
+
+		self._ws = None
 
 	def run(self):
 		while self._keep_running:
@@ -31,19 +37,19 @@ class OBSThread(threading.Thread):
 				self._keep_running = False
 				break
 
-			if len(event) != 2:
-				continue
+			#if len(event) != 2:
+			#	continue
 
-			command = event[0]
-			ws = event[1]
+			command = event
+			#ws = event[1]
 
 			if command.get('action') in ('timedsource', 'timedfilter'):
-				self.render_cycle(ws, command)
+				self.render_cycle(command)
 
 			elif command.get('action') == 'scenechange':
-				self.scene_change(ws, command)
+				self.scene_change(command)
 
-	def scene_change(self, ws, command):
+	def scene_change(self, command):
 		if 'source_scenes' in command:
 			source_scenes = command['source_scenes'].split()
 
@@ -52,10 +58,10 @@ class OBSThread(threading.Thread):
 				'request-type': 'GetCurrentScene'
 			}
 
-			if self.send_obs_command(ws, req):
+			if self.send_obs_command(req):
 				res = {}
 				while res.get('message-id', -1) != req['message-id']:
-					res = json.loads(ws.recv())
+					res = json.loads(self.obs_ws.recv())
 				current_scene = res['name']
 				if not current_scene in source_scenes:
 					return
@@ -68,26 +74,25 @@ class OBSThread(threading.Thread):
 			'scene-name': command['scene']
 		}
 
-		self.send_obs_command(ws, req)
+		self.send_obs_command(req)
 
 
-	def render_cycle(self, ws, command):
+	def render_cycle(self, command):
 		ident = ""
 		args = None
 		kwargs = {}
 		func = None
 		action = command.get('action')
 		if action == 'timedfilter':
-			args = (ws, command['source'], command['filter'])
+			args = (command['source'], command['filter'])
 			kwargs = {}
 			func = self.render_filter
 			ident = f"timedfilter_{command['source']}_{command['filter']}"
 		elif action == 'timedsource':
-			args = (ws, command['scene'], command['source'])
+			args = (command['scene'], command['source'])
 			kwargs = {}
 			func = self.render_source
 			ident = f"timedsource_{command['scene']}_{command['source']}"
-
 
 		if func is None:
 			return
@@ -114,12 +119,11 @@ class OBSThread(threading.Thread):
 
 		self._render_end_times[ident] = time.time() + render_time - int(command['time'])
 
-
 	def _delayed_func_call(self, delay, func, args, kwargs):
 		time.sleep(delay)
 		func(*args, **kwargs)
 
-	def render_filter(self, ws, source, filter, render=True):
+	def render_filter(self, source, filter, render=True):
 		req = {
 			'message-id': self.call_id,
 			'request-type': 'SetSourceFilterVisibility',
@@ -127,9 +131,9 @@ class OBSThread(threading.Thread):
 			'sourceName': source,
 			'filterEnabled': render
 		}
-		self.send_obs_command(ws, req)
+		self.send_obs_command(req)
 
-	def render_source(self, ws, scene, source, render=True):
+	def render_source(self, scene, source, render=True):
 		req = {
 			'message-id': self.call_id,
 			'request-type': 'SetSceneItemRender',
@@ -137,11 +141,11 @@ class OBSThread(threading.Thread):
 			'source': source,
 			'render': render
 		}
-		self.send_obs_command(ws, req)
+		self.send_obs_command(req)
 
-	def send_obs_command(self, ws, req):
+	def send_obs_command(self, req):
 		try:
-			ws.send(json.dumps(req))
+			self.obs_ws.send(json.dumps(req))
 			return True
 		except:
 			self.errors = True
@@ -151,6 +155,45 @@ class OBSThread(threading.Thread):
 
 	def shutdown(self):
 		self._keep_running = False
+
+	def _ws_connect(self):
+		if self._ws:
+			self._ws.close()
+
+		self._ws = WebSocket()
+		try:
+			self._ws.connect(f'ws://{self.host}:{self.port}')
+
+			self._ws.send(json.dumps({
+				"request-type": "GetAuthRequired",
+				"message-id": str(self.call_id)
+			}))
+			res = json.loads(self._ws.recv())
+
+			if res['status'] != 'ok':
+				self.buffer_queue.put(('ERR', res['error']))
+				self._ws = None
+				return
+
+			if res.get('authRequired'):
+				sec = base64.b64encode(hashlib.sha256((self.password + res['salt']).encode('utf-8')).digest())
+				auth = base64.b64encode(hashlib.sha256(sec + res['challenge'].encode('utf-8')).digest()).decode('utf-8')
+				self._ws.send(json.dumps({"request-type": "Authenticate", "message-id": str(self.call_id), "auth": auth}))
+
+				res = json.loads(self._ws.recv())
+				if res['status'] != 'ok':
+					self.buffer_queue.put(('ERR', res['error']))
+					self._ws = None
+					return
+		except socket.error as error:
+			self.buffer_queue.put(('ERR', error))
+
+	@property
+	def obs_ws(self):
+		if not self._ws or self.errors:
+			self.errors = False
+			self._ws_connect()
+		return self._ws
 
 	@property
 	def call_id(self):
@@ -162,7 +205,7 @@ class OBS(ModuleBase):
 	def setup(self):
 		self._obs_data = self.get_module_data()
 		self.obs_queue = Queue()
-		self.obs_thread = OBSThread(self.obs_queue, self.voltron.buffer_queue)
+		self.obs_thread = None
 
 		if not 'commands' in self._obs_data:
 			self._obs_data['commands'] = {}
@@ -235,7 +278,7 @@ class OBS(ModuleBase):
 		))
 
 		self.event_listen(EVT_CHATCOMMAND, self.command)
-		self.obs_thread.start()
+		self.restart_obs_thread()
 
 	def command(self, event):
 		if not event.command in self._obs_data['commands']:
@@ -243,7 +286,7 @@ class OBS(ModuleBase):
 
 		command = self._obs_data['commands'][event.command]
 
-		self.obs_queue.put((command, self.obs_ws))
+		self.obs_queue.put(command)
 
 		self.save_module_data(self._obs_data)
 
@@ -352,7 +395,7 @@ class OBS(ModuleBase):
 		self._obs_data['host'] = new_host
 		self.save_module_data(self._obs_data)
 		self.buffer_print('VOLTRON', f'Host set to: {self.host}')
-		self._ws_connect()
+		self.restart_obs_thread()
 
 	def _set_port(self, input, command):
 		match = re.search('^(\d+)$', input)
@@ -365,7 +408,7 @@ class OBS(ModuleBase):
 		self._obs_data['port'] = new_port
 		self.save_module_data(self._obs_data)
 		self.buffer_print('VOLTRON', f'Port set to: {self.port}')
-		self._ws_connect()
+		self.restart_obs_thread()
 
 	def _set_password(self, input, command):
 		match = re.search('^([^ ]+)$', input)
@@ -379,7 +422,7 @@ class OBS(ModuleBase):
 		self._obs_data['password'] = new_pw
 		self.save_module_data(self._obs_data)
 		self.buffer_print('VOLTRON', 'Password updated')
-		self._ws_connect()
+		self.restart_obs_thread()
 
 	def _list_obs_commands(self, input, command):
 		self.buffer_print('VOLTRON', '')
@@ -412,51 +455,26 @@ class OBS(ModuleBase):
 
 			self.buffer_print('VOLTRON', f"  {key}: {self._obs_data['commands'][command][key]}")
 
+	def restart_obs_thread(self):
+		if self.obs_thread:
+			self.obs_queue.put('shutdown')
+			self.obs_thread.shutdown()
+			self.obs_thread.join()
 
-	def _ws_connect(self):
-		if self._ws:
-			self._ws.close()
-
-		self._ws = WebSocket()
-		try:
-			self._ws.connect(f'ws://{self.host}:{self.port}')
-
-			self._ws.send(json.dumps({
-				"request-type": "GetAuthRequired",
-				"message-id": str(self.call_id)
-			}))
-			res = json.loads(self._ws.recv())
-
-			if res['status'] != 'ok':
-				self.buffer_print('ERR', res['error'])
-				self._ws = None
-				return
-
-			if res.get('authRequired'):
-				sec = base64.b64encode(hashlib.sha256((self.password + res['salt']).encode('utf-8')).digest())
-				auth = base64.b64encode(hashlib.sha256(sec + res['challenge'].encode('utf-8')).digest()).decode('utf-8')
-				self._ws.send(json.dumps({"request-type": "Authenticate", "message-id": str(self.call_id), "auth": auth}))
-
-				res = json.loads(self._ws.recv())
-				if res['status'] != 'ok':
-					self.buffer_print('ERR', res['error'])
-					self._ws = None
-					return
-		except socket.error as error:
-			self.buffer_print('ERR', error)
+		self.obs_thread = OBSThread(
+			self.obs_queue,
+			self.voltron.buffer_queue,
+			self.host,
+			self.port,
+			self.password
+		)
+		self.obs_thread.start()
 
 	def shutdown(self):
 		self.obs_queue.put('shutdown')
 		self.obs_thread.shutdown()
 		self.obs_thread.join()
 		self.save_module_data(self._obs_data)
-
-	@property
-	def obs_ws(self):
-		if not self._ws or self.obs_thread.errors:
-			self.obs_thread.errors = False
-			self._ws_connect()
-		return self._ws
 
 	@property
 	def host(self):
