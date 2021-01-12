@@ -15,6 +15,7 @@ LOG_LEVEL = 'INFO'
 
 ## To log data we aren't using
 IRC_LOG_FILE = "irc.log"
+LOG_IRC_DATA = True
 
 DEFAULT_SOCKET_TIMEOUT = 60
 OAUTH_HTTPD_PORT = 80

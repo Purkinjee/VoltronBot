@@ -148,8 +148,8 @@ class IRCBase:
 				else:
 					## Empty response means the connection is probably dead
 					## call reconnect() just to be sure
-					self._ts_print("Empty response... Attempting to reconnect")
-					self.reconnect()
+					self._ts_print("Empty response... Checking connnection")
+					self._check_alive()
 			except socket.timeout:
 				## If the connection times out make sure Twitch is still responsive
 				self._check_alive()
@@ -260,6 +260,8 @@ class IRCBase:
 		#self._log(resp)
 
 	def _log(self, msg):
+		if not config.LOG_IRC_DATA:
+			return
 		log_file = open(config.IRC_LOG_FILE, "a+")
 		msg_list = msg.split("\r\n")
 		ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
