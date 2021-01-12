@@ -202,11 +202,12 @@ class PubSubThread:
 			"type": "LISTEN",
 			"nonce": "butt",
 			"data": {
-				"topics": [self.event_names['whispers'],
-							self.event_names['bits'],
-							self.event_names['subs'],
-							self.event_names['redemptions']
-							],
+				"topics": [
+					#self.event_names['whispers'],
+					self.event_names['bits'],
+					self.event_names['subs'],
+					self.event_names['redemptions']
+				],
 				"auth_token": self.broadcaster.oauth_tokens.token(self.__fernet_key)
 			}
 		}
