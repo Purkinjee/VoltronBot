@@ -159,7 +159,7 @@ class IRCBase:
 				## down the client and the connection is intentially closed
 				if self.keep_listening:
 					if not self.reconnecting:
-						raise e
+						self.reconnect()
 
 	def send_message(self, message, action=False):
 		"""
