@@ -80,6 +80,12 @@ class VersionCheckThread(threading.Thread):
 				self.buffer_queue.put(('VOLTRON', resp['url']))
 			else:
 				self.buffer_queue.put(('INFO', 'Voltron Bot is up to date!'))
+				changelog = resp.get('changelog')
+				notice = resp.get('notice')
+				if changelog:
+					self.buffer_queue.put(('VOLTRON', f'Changelog: {changelog}'))
+				if notice:
+					self.buffer_queue.put(('VOLTRON', f'NOTICE: {notice}'))
 		except:
 			self.buffer_queue.put(('ERR', 'Update Check Failed!'))
 

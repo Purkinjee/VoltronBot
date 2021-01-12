@@ -99,8 +99,9 @@ class IRCBase:
 
 		## Update the socket time as we just connected
 		self.socket_time = time.time()
-		self._last_ping = 0
-		self._last_pong = 0
+		self._last_ping = time.time()
+		self._last_pong = time.time()
+		self._ping()
 		self.reconnect_attempts = 0
 		self._ts_print("Connected!", ts=False)
 
