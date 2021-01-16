@@ -36,7 +36,7 @@ class ShoutOut(ModuleBase):
 
 	def command(self, event):
 		if event.command == self.so_command:
-			match = re.search(r'^@?([^ ]+)$', event.args)
+			match = re.search(r'^@?([^ ]+)$', event.message)
 			if match:
 				so_user = match.group(1)
 				twitch_user = self.twitch_api.get_user(so_user)

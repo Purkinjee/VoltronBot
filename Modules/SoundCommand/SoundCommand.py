@@ -186,7 +186,7 @@ class SoundCommand(ModuleBase):
 
 		command = match.group(1)
 		if not command in self._commands['commands']:
-			self.buffer_print('VOLTRON', f'Unknown command: !{comand}')
+			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
 			return
 
 		media_file = self._commands['commands'][command]['sound_file']
