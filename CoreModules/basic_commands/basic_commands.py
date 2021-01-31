@@ -21,6 +21,27 @@ class BasicCommands(ModuleBase):
 		}
 
 		self.register_admin_command(ModuleAdminCommand(
+			'addcommand',
+			self._add_command_admin,
+			usage = f'{self.module_name} addcommand !<command> <response>',
+			description = 'Add a basic command.'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'appendcommand',
+			self._append_command_admin,
+			usage = f'{self.module_name} appendcommand !<command> <response>',
+			description = 'Append a response to an existing command'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'deletecommand',
+			self._delete_command_admin,
+			usage = f'{self.module_name} deletecommand !<command>',
+			description = 'Delete a command'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
 			'list',
 			self.list_commands,
 			usage = f'{self.module_name} list',
@@ -83,7 +104,7 @@ class BasicCommands(ModuleBase):
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
-		match = re.search(r'^!([^ ]+) (.*)', event.args)
+		match = re.search(r'^!([^ ]+) (.*)', event.message)
 		if match:
 			command = match.group(1)
 			response = match.group(2).strip()
@@ -97,12 +118,29 @@ class BasicCommands(ModuleBase):
 			self.save_module_data(self._commands)
 			self.send_chat_message(f'Command !{command} successfully added!')
 
+	def _add_command_admin(self, input, command):
+		match = re.search(r'^!([^ ]+) (.*)', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		new_command = match.group(1)
+		response = match.group(2).strip()
+		if new_command in self._commands:
+			self.buffer_print('VOLTRON', f'The command !{new_command} already exists')
+			return
+		else:
+			self._commands[new_command] = { 'response': [response] }
+
+		self.save_module_data(self._commands)
+		self.buffer_print('VOLTRON', f'Command !{new_command} successfully added!')
+
 	def _append_command(self, event):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
-		match = re.search(r'^!([^ ]+) (.*)', event.args)
+		match = re.search(r'^!([^ ]+) (.*)', event.message)
 		if match:
 			command = match.group(1)
 			response = match.group(2).strip()
@@ -115,12 +153,29 @@ class BasicCommands(ModuleBase):
 			self.save_module_data(self._commands)
 			self.send_chat_message(f'Command !{command} successfully modified')
 
+	def _append_command_admin(self, input, command):
+		match = re.search(r'^!([^ ]+) (.*)', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		new_command = match.group(1)
+		response = match.group(2).strip()
+
+		if not new_command in self._commands:
+			self.buffer_print('VOLTRON', f'Command !{new_command} not found')
+			return
+
+		self._commands[new_command]['response'].append(response)
+		self.save_module_data(self._commands)
+		self.buffer_print('VOLTRON', f'Command !{new_command} successfully modified')
+
 
 	def _delete_command(self, event):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
-		match = re.search(r'^!([^ ]+)$', event.args)
+		match = re.search(r'^!([^ ]+)$', event.message)
 		if not match:
 			self.send_chat_message('Usage: !deletecommand <command>')
 			return
@@ -133,6 +188,22 @@ class BasicCommands(ModuleBase):
 		del self._commands[command]
 		self.save_module_data(self._commands)
 		self.send_chat_message(f'Command !{command} successfully deleted!')
+
+	def _delete_command_admin(self, input, command):
+		match = re.search(r'^!([^ ]+)$', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
+
+		new_command = match.group(1)
+		if not new_command in  self._commands.keys():
+			self.buffer_print('VOLTRON', f'Command !{new_command} not found')
+			return
+
+		del self._commands[new_command]
+		self.save_module_data(self._commands)
+		self.buffer_print('VOLTRON', f'Command !{new_command} successfully deleted!')
+
 
 	def command_account(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)

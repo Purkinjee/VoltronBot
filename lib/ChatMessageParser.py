@@ -32,10 +32,14 @@ class ChatMessageParser:
 			split = v_parsed.split(':')
 			key = split[0]
 			args = split[1:]
+
+
 			if key in self.variables:
 				res = self.variables[key](self.event, *args)
 				if res != None:
 					parsed_str = parsed_str.replace(f'{{{v_parsed}}}', res)
+			elif self.event is not None and hasattr(self.event, key):
+				parsed_str = parsed_str.replace(f'{{{v_parsed}}}', str(getattr(self.event, key)))
 
 		return parsed_str
 
@@ -82,7 +86,8 @@ class ChatMessageParser:
 		stream_info = self.twitch_api.get_stream(self.broadcaster.twitch_user_id)
 
 		if not stream_info:
-			return None
+			return "0 hours 0 minutes"
+			#return None
 
 		started_at = datetime.strptime(stream_info['started_at'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone(timedelta(0)))
 		now = datetime.utcnow().replace(tzinfo=timezone(timedelta(0)))

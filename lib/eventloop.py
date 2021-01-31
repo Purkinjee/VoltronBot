@@ -144,7 +144,9 @@ class EventLoop(threading.Thread):
 			'FIRST_MESSAGE': [],
 			'SUBSCRIPTION': [],
 			'BITS': [],
-			'POINT_REDEMPTION': []
+			'POINT_REDEMPTION': [],
+			'HOST': [],
+			'RAID': [],
 		}
 
 		self._keep_listening = True
@@ -191,7 +193,7 @@ class EventLoop(threading.Thread):
 			if not mod in user_mods:
 				mod_import = import_module('Modules.{}'.format(mod)).VoltronModule
 			else:
-				mod_import = import_module('UserModules.{}'.format(mod)).VoltronModule
+				mod_import = import_module('{}.{}'.format(config.USER_MODULES_DIRECTORY, mod)).VoltronModule
 
 			mod_name = mod_import.module_name
 			if mod_name in self._core_mod_names:

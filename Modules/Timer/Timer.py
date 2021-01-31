@@ -30,7 +30,7 @@ class Timer(ModuleBase):
 		if self.mod_only and not event.is_mod:
 			return False
 
-		match = re.search(r'^([\d]+) ?(.+)?$', event.args)
+		match = re.search(r'^([\d]+) ?(.+)?$', event.message)
 		if not match:
 			return False
 

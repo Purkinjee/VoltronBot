@@ -8,7 +8,8 @@ EVT_FIRST_MESSAGE = 'FIRST_MESSAGE'
 EVT_SUBSCRIPTION = 'SUBSCRIPTION'
 EVT_BITS = 'BITS'
 EVT_POINT_REDEMPTION = 'POINT_REDEMPTION'
-
+EVT_HOST = 'HOST'
+EVT_RAID = 'RAID'
 
 class Event:
 	"""
@@ -21,23 +22,50 @@ class ChatCommandEvent(Event):
 	Chat command event. This event is used for any line in chat beginning with !
 	"""
 	type = EVT_CHATCOMMAND
-	def __init__(self, command, args, display_name, user_id, is_mod, is_broadcaster, bypass_permissions = False):
+	def __init__(
+		self,
+		command,
+		message,
+		display_name,
+		user_id,
+		is_vip,
+		is_mod,
+		is_broadcaster,
+		bypass_permissions = False,
+		**kwargs
+	):
 		self.command = command.lower().strip()
-		self.args = args
-		self.message = args
+
+		if message is not None:
+			self.message = str(message).strip()
+			self.args = self.message.split(' ')
+		else:
+			self.args = []
+			self.message = ''
+
 		self.display_name = display_name
 		self.user_id = user_id
+		self.is_vip = is_vip
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
 		self.bypass_permissions = bypass_permissions
 
+		for key in kwargs:
+			setattr(self, key, kwargs[key])
+
 class ChatMessageEvent(Event):
 	type = EVT_CHATMESSAGE
-	def __init__(self, message, display_name, user_id, is_mod, is_broadcaster):
-		self.message = message.strip()
-		self.args = message.split(' ')
+	def __init__(self, message, display_name, user_id, is_vip, is_mod, is_broadcaster):
+		if message is not None:
+			self.message = str(message).strip()
+			self.args = self.message.split(' ')
+		else:
+			self.message = ''
+			self.args = []
+
 		self.display_name = display_name
 		self.user_id = user_id
+		self.is_vip = is_vip
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
 
@@ -150,3 +178,14 @@ class ChannelPointRedemption(Event):
 
 		self.prompt = prompt
 		self.user_input = user_input
+
+class HostEvent(Event):
+	type = EVT_HOST
+	def __init__(self, display_name):
+		self.display_name = display_name
+
+class RaidEvent(Event):
+	type = EVT_RAID
+	def __init__(self, display_name, viewer_count):
+		self.display_name = display_name
+		self.viewer_count = viewer_count

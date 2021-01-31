@@ -78,7 +78,7 @@ class Trigger(ModuleBase):
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
-		match = re.search(r'^([^ ]+) (.*)', event.args)
+		match = re.search(r'^([^ ]+) (.*)', event.message)
 		if match:
 			trigger = match.group(1).lower()
 			response = match.group(2).strip()
@@ -96,7 +96,7 @@ class Trigger(ModuleBase):
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
-		match = re.search(r'^([^ ]+) (.*)', event.args)
+		match = re.search(r'^([^ ]+) (.*)', event.message)
 		if match:
 			trigger = match.group(1).lower()
 			response = match.group(2).strip()
@@ -114,7 +114,7 @@ class Trigger(ModuleBase):
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
-		match = re.search(r'^([^ ]+)$', event.args)
+		match = re.search(r'^([^ ]+)$', event.message)
 		if not match:
 			self.send_chat_message('Usage: !deletetrigger <trigger>')
 			return

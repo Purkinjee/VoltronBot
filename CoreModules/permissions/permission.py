@@ -14,7 +14,7 @@ class PermissionModule(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'set',
 			self._set_permission,
-			usage = f'{self.module_name} set !<command> <all/mod/broadcaster>',
+			usage = f'{self.module_name} set !<command> <all/vip/mod/broadcaster>',
 			description = 'Set the permssion for !<command> to all, mod only, or broadcaster only'
 		))
 
@@ -35,7 +35,7 @@ class PermissionModule(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'default',
 			self._set_default_permission,
-			usage = f'{self.module_name} default <all/mod/broadcaster>',
+			usage = f'{self.module_name} default <all/vip/mod/broadcaster>',
 			description = 'Set default permission for all comamnds to all, mod only, or broadcaster only'
 		))
 
@@ -45,15 +45,19 @@ class PermissionModule(ModuleBase):
 		command_permission_data = self._permission_data['commands'].get(event.command, {})
 		permission = command_permission_data.get('basic', self.default_permission)
 
-		if permission == 'broadcaster' and not event.is_broadcaster:
+		if permission == 'all':
+			return True
+		elif permission == 'broadcaster' and not event.is_broadcaster:
 			return False
 		elif permission == 'mod' and not event.is_mod:
+			return False
+		elif permission == 'vip' and not (event.is_vip or event.is_mod or event.is_broadcaster):
 			return False
 
 		return True
 
 	def _set_permission(self, input, command):
-		match = re.search(r'^!([^ ]+) (all|mod|broadcaster)$', input)
+		match = re.search(r'^!([^ ]+) (all|vip|mod|broadcaster)$', input)
 		if not match:
 			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			return
@@ -92,7 +96,7 @@ class PermissionModule(ModuleBase):
 		self.buffer_print('VOLTRON', f'Default permission: {self.default_permission}')
 
 	def _set_default_permission(self, input, command):
-		if not input in ('all', 'mod', 'broadcaster'):
+		if not input in ('all', 'vip', 'mod', 'broadcaster'):
 			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
 			self.buffer_print('VOLTRON', f'Default permission: {self.default_permission}')
 			return

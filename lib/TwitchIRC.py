@@ -8,7 +8,7 @@ import json
 import threading
 
 from lib.common import get_broadcaster
-from base.events import ChatCommandEvent, ChatMessageEvent
+from base.events import ChatCommandEvent, ChatMessageEvent, HostEvent, RaidEvent
 
 import config
 from Version import VERSION
@@ -57,7 +57,7 @@ class IRCBase:
 
 		#self._ts_print("Voltron bot is fully operational!")
 
-	def message_received(self, display_name, user_id, is_mod, is_broadcaster, message):
+	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message):
 		"""
 		Called whenever a PRIVMSG is received in twitch chat and successfully parsed
 
@@ -149,7 +149,7 @@ class IRCBase:
 				else:
 					## Empty response means the connection is probably dead
 					## call reconnect() just to be sure
-					self._ts_print("Empty response... Checking connnection")
+					#self._ts_print("Empty response... Checking connnection")
 					self._check_alive()
 			except socket.timeout:
 				## If the connection times out make sure Twitch is still responsive
@@ -225,6 +225,20 @@ class IRCBase:
 			)
 			is_mod = True if mod_match else False
 
+			is_vip = False
+			badge_match = re.search(
+				r'badges=([^;]+)',
+				twitch_shit
+			)
+			if badge_match:
+				badge_info = badge_match.group(1)
+				vip_match = re.search(
+					r'vip/\d+',
+					badge_info
+				)
+				if vip_match:
+					is_vip = True
+
 			## See if the sender is the same as the logged in broadcaster
 			is_broadcaster = int(broadcaster_id) == int(user_id)
 			if is_broadcaster:
@@ -251,14 +265,54 @@ class IRCBase:
 			self.message_received(
 				display_name,
 				user_id,
+				is_vip,
 				is_mod,
 				is_broadcaster,
 				m
 			)
+			#return True
+
+		## Check for hosts
+		host_regex = r'^:[^ ]+ PRIVMSG [^ ]+ :([^ ]+) is now hosting you'
+		match = re.search(host_regex, resp)
+		if match:
+			display_name = match.group(1)
+			self.handle_host(display_name)
 			return True
+
+		usernotice_regex = (r'^@([^ ]+) :([^ ]+) USERNOTICE #([^ ]+)')
+		match = re.search(usernotice_regex, resp)
+		if match:
+			twitch_shit = match.group(1)
+			user_info = match.group(2)
+			channel = match.group(3)
+
+			if re.search(r'msg-id=raid', twitch_shit):
+				display_name = "Unknown"
+				display_match = re.search(
+					r'display-name=([^; ]*)',
+					twitch_shit
+				)
+
+				if display_match:
+					display_name = display_match.group(1)
+
+				viewer_count_match = re.search('msg-param-viewerCount=(\d+)', twitch_shit)
+				viewer_count = 0
+				if viewer_count_match:
+					viewer_count = int(viewer_count_match.group(1))
+
+				self.handle_raid(display_name, viewer_count)
+				return True
 
 		## Otherwise log messages to a text file for now
 		#self._log(resp)
+
+	def handle_host(self, display_name):
+		pass
+
+	def handle_raid(self, display_name, viewer_count):
+		pass
 
 	def _log(self, msg):
 		if not config.LOG_IRC_DATA:
@@ -383,7 +437,15 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 		self.join_channels()
 		self.listen()
 
-	def message_received(self, display_name, user_id, is_mod, is_broadcaster, message):
+	def handle_host(self, display_name):
+		event = HostEvent(display_name)
+		self.event_queue.put(event)
+
+	def handle_raid(self, display_name, viewer_count):
+		event = RaidEvent(display_name, viewer_count)
+		self.event_queue.put(event)
+
+	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message):
 		match = re.search(r'^!([^ ]+)(.*)', message)
 		if match:
 			command = match.group(1)
@@ -393,6 +455,7 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 				args,
 				display_name,
 				user_id,
+				is_vip,
 				is_mod,
 				is_broadcaster
 			)
@@ -401,6 +464,7 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 			message,
 			display_name,
 			user_id,
+			is_vip,
 			is_mod,
 			is_broadcaster
 		)
