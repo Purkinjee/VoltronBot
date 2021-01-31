@@ -139,7 +139,7 @@ class ChannelPointModule(ModuleBase):
 
 		for reward_id in self._channel_point_data['attachments']:
 			if self._channel_point_data['attachments'][reward_id].get('command'):
-				command_name = "!" + self._channel_point_data['attachments'][reward_id].get['command']
+				command_name = "!" + self._channel_point_data['attachments'][reward_id].get('command')
 			else:
 				command_name = 'Not Set'
 
@@ -162,7 +162,7 @@ class ChannelPointModule(ModuleBase):
 		count = 1
 		for reward_id in self._channel_point_data['attachments']:
 			if self._channel_point_data['attachments'][reward_id].get('command'):
-				command_name = "!" + self._channel_point_data['attachments'][reward_id].get['command']
+				command_name = "!" + self._channel_point_data['attachments'][reward_id].get('command')
 			else:
 				command_name = 'Not Set'
 			command = self._channel_point_data['attachments'][reward_id].get('command')
