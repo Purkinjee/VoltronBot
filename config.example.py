@@ -2,6 +2,7 @@ import os
 ## Directory for all Voltron modules
 APP_DIRECTORY = os.environ['APPDATA'] + '\\VoltronBot'
 DB = APP_DIRECTORY + '\\data.db'
+USER_MODULES_DIRECTORY = 'UserModules'
 
 ## Set to true for production mode
 PRODUCTION = False
