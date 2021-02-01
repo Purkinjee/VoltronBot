@@ -144,7 +144,7 @@ class ChannelPointModule(ModuleBase):
 				command_name = 'Not Set'
 
 			self.buffer_print('VOLTRON', f"  {reward_map.get(reward_id, '<deleted>')} - {command_name}")
-			for message in self._channel_point_data['attachments'][reward_id]['message_command']:
+			for message in self._channel_point_data['attachments'][reward_id].get('message_command', {}):
 				self.buffer_print('VOLTRON', f"    {message}: !{self._channel_point_data['attachments'][reward_id]['message_command'][message]}")
 
 	def _delete_reward(self, input, command):
