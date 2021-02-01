@@ -21,6 +21,7 @@ import re
 from uuid import uuid4
 import time
 from Version import VERSION
+import config
 
 DEFAULT_STATUS = 'Ready'
 DEFAULT_PROMPT = 'VoltronBot>'
@@ -38,6 +39,8 @@ class UIBufferQueue(threading.Thread):
 
 		self.keep_listening = True
 
+		self.log_levels = ['VOLTRON', 'CRIT', 'ERR', 'WARN', 'STATUS', 'INFO', 'DEBUG']
+
 	def run(self):
 		while self.keep_listening:
 			try:
@@ -47,7 +50,9 @@ class UIBufferQueue(threading.Thread):
 					self.keep_listening = False
 					break
 
-				if type(input) is tuple and input[0] in ['INFO', 'STATUS', 'DEBUG', 'ERR', 'CRIT', 'WARN', 'VOLTRON']:
+				if type(input) is tuple and input[0] in self.log_levels:
+					if config.LOG_LEVEL in self.log_levels and self.log_levels.index(input[0]) > self.log_levels.index(config.LOG_LEVEL):
+						continue
 					self.update_scrolling_output(input)
 				#if type(input) is tuple and input[0] in ['VOLTRON']:
 				#	self.update_scrolling_output(input)

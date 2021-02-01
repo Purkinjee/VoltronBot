@@ -99,9 +99,14 @@ class IRCBase:
 
 		## Update the socket time as we just connected
 		self.socket_time = time.time()
-		self._last_ping = time.time()
-		self._last_pong = time.time()
-		self._ping()
+		#self._last_ping = time.time()
+		#self._last_pong = time.time()
+		self._last_ping = 0
+		self._last_pong = 0
+
+		## The ping here wasn't functional. I believe the connection wasn't established yet
+		## And we were never receiving a pong
+		#self._ping()
 		self.reconnect_attempts = 0
 		self._ts_print("Connected!", ts=False)
 
@@ -157,6 +162,7 @@ class IRCBase:
 			except socket.error as e:
 				## if self.keep_listening is False, we assume that we are shutting
 				## down the client and the connection is intentially closed
+				self._ts_print(str(e))
 				if self.keep_listening:
 					if not self.reconnecting:
 						self.reconnect()
@@ -375,13 +381,19 @@ class IRCBase:
 		"""
 		## If we sent a PING and it's been more than 2 seconds without a PONG
 		## assume the connection is dead and reconnect
-		if (self._last_ping - self._last_pong) > 2:
+
+		## Case for the very first ping sent over a connection where we have no pong time.
+		## For this case, use the ping time
+		if (time.time() - self._last_ping) > 2 and self._last_pong == 0 and self._last_ping > 0:
+			self._ts_print("Ping timed out")
+			self.reconnect()
+		elif (self._last_ping - self._last_pong) > 2:
 			self._ts_print("Ping timed out")
 			self.reconnect()
 		## If we havent had a successful PING/PONG exchange in the last
 		## 400 seconds, initate a PING
 		elif (time.time() - self._last_pong) > 400:
-			self._ts_print("Checking connection")
+			#self._ts_print("Checking connection")
 			## Set socket timeout to 1 second because something seems to be off
 			self.irc.settimeout(1)
 			self._ping()

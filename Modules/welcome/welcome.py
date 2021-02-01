@@ -106,8 +106,7 @@ class Welcome(ModuleBase):
 		handled = False
 		if not self._stream_online and not testing:
 			return False
-		if not run_by_command:
-			self.buffer_print('VOLTRON', f'First message: {event.display_name}')
+
 		sound_played = False
 		if event.user_id in self._sound_data['user_sounds']:
 			data = self._sound_data['user_sounds'][event.user_id]
@@ -139,6 +138,9 @@ class Welcome(ModuleBase):
 			else:
 				self.play_audio(alert_path, device=self.alert_sound_device)
 				self._last_alert = time.time()
+
+		if not run_by_command:
+			self.buffer_print('VOLTRON', f'First message: {event.display_name}')
 
 		return handled
 
@@ -265,10 +267,21 @@ class Welcome(ModuleBase):
 			self.buffer_print('VOLTRON', dev_str)
 			valid_devices[count] = device
 
+		self.buffer_print('VOLTRON', f"Currently set to: {self._sound_data.get(key, 'Default')}")
+
 		def save(prompt):
 			if prompt.strip() == 'c':
 				self.update_status_text()
 				return True
+
+			if prompt == "-1":
+				if key in self._sound_data:
+					del self._sound_data[key]
+					self.save_module_data(self._sound_data)
+				self.buffer_print('VOLTRON', 'Audio device set to default')
+				self.update_status_text()
+				return True
+
 			match = re.search(r'^(\d+)$', prompt)
 			if not match:
 				return False
@@ -285,7 +298,7 @@ class Welcome(ModuleBase):
 			self.buffer_print('VOLTRON', f"Audio device set to {valid_devices[device_id]['name']}")
 			return True
 
-		self.update_status_text('Select Audio Device. c to cancel')
+		self.update_status_text('Select Audio Device. -1 for default. c to cancel.')
 		self.prompt_ident = self.get_prompt('Audio Device> ', save)
 
 	def _set_entrance_audio_device(self, input, command):
@@ -372,6 +385,7 @@ class Welcome(ModuleBase):
 			'',
 			user_info['display_name'],
 			user_info['id'],
+			False,
 			False,
 			False
 		)
