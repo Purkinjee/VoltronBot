@@ -39,8 +39,9 @@ class ChannelPointModule(ModuleBase):
 			return
 
 		command = self._channel_point_data['attachments'][event.reward_id].get('command')
-		if event.user_input.lower() in self._channel_point_data['attachments'][event.reward_id].get('message_command', {}):
-			command = self._channel_point_data['attachments'][event.reward_id]['message_command'][event.user_input.lower()]
+		user_input = event.user_input.lower() if event.user_input else ''
+		if user_input in self._channel_point_data['attachments'][event.reward_id].get('message_command', {}):
+			command = self._channel_point_data['attachments'][event.reward_id]['message_command'][user_input]
 
 		if command:
 			command_event = ChatCommandEvent(
