@@ -71,7 +71,7 @@ class VersionCheckThread(threading.Thread):
 	def run(self):
 		time.sleep(3)
 		try:
-			req = requests.get('https://purkinje.live/voltron/version.json')
+			req = requests.get('https://voltron.purkinje.live/version.json')
 			resp = json.loads(req.text)
 
 			if VERSION != resp['current_version']:
