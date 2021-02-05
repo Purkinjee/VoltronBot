@@ -45,7 +45,7 @@ class BroadcastStatusThread(threading.Thread):
 								viewer_count = stream['viewer_count']
 							))
 							self.last_changed = time.time()
-							self.buffer_queue.put(('VOLTRON', 'Stream is now live!'))
+							self.buffer_queue.put(('STATUS', 'Stream is now live!'))
 							self.buffer_queue.put(('DEBUG', f"Stream ID: {stream['id']}"))
 
 						self.broadcast_id = stream['id']
@@ -54,7 +54,7 @@ class BroadcastStatusThread(threading.Thread):
 						if self.broadcast_id or self.last_check == 0:
 							self.event_queue.put(StreamStatusEvent())
 							self.last_changed = time.time()
-							self.buffer_queue.put(('INFO', 'Stream is offline.'))
+							self.buffer_queue.put(('STATUS', 'Stream is offline.'))
 
 						self.broadcast_id = None
 
