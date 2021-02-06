@@ -1,6 +1,7 @@
 import config
 import requests
 import json
+from datetime import datetime, timezone, timedelta
 
 class TwitchAPIHelper:
 	"""
@@ -98,6 +99,37 @@ class TwitchAPIHelper:
 			return None
 
 		return data[0]
+
+	def get_follow_time(self, broadcaster_id, user_id):
+		try:
+			req = requests.get(
+				'https://api.twitch.tv/helix/users/follows',
+				headers = {
+					'client-id': self.__client_id,
+					'Authorization': 'Bearer {}'.format(self.oauth_tokens.token(self.__fernet_key))
+				},
+				params = {
+					'from_id' : user_id,
+					'to_id': broadcaster_id
+				}
+			)
+		except requests.exceptions.ConnectionError:
+			return False
+
+		resp = json.loads(req.text)
+		data = resp.get('data', None)
+
+
+
+		if not data or len(data) < 1:
+			return None
+
+		data = data[0]
+		followed_at = datetime.strptime(data['followed_at'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone(timedelta(0)))
+		now = datetime.utcnow().replace(tzinfo=timezone(timedelta(0)))
+		secs = (now - followed_at).total_seconds()
+
+		return secs
 
 	def get_channel(self, broadcaster_id):
 		try:

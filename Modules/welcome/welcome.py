@@ -2,6 +2,7 @@ import re
 import os
 import sounddevice
 import time
+import humanize
 
 from base.module import ModuleBase, ModuleAdminCommand
 from lib.common import get_broadcaster
@@ -140,7 +141,12 @@ class Welcome(ModuleBase):
 				self._last_alert = time.time()
 
 		if not run_by_command:
-			self.buffer_print('VOLTRON', f'First message: {event.display_name}')
+			broadcaster = get_broadcaster()
+			follow_str = "NOT FOLLOWING"
+			follow_time = broadcaster.twitch_api.get_follow_time(broadcaster.twitch_user_id, event.user_id)
+			if follow_time is not None:
+				follow_str = f"Followed {humanize.naturaltime(follow_time)}"
+			self.buffer_print('VOLTRON', f'First message: {event.display_name} ({follow_str})')
 
 		return handled
 
