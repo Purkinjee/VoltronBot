@@ -35,6 +35,8 @@ class ChatCommandEvent(Event):
 		bypass_permissions = False,
 		**kwargs
 	):
+		if command is None:
+			command = ''
 		self.command = command.lower().strip()
 
 		if message is not None:
@@ -127,6 +129,8 @@ class SubscriptionEvent(Event):
 		self.recipient_user_name = recipient_user_name
 		self.recipient_display_name = recipient_display_name
 
+		if sub_plan is None:
+			sub_plan = ''
 		self.sub_plan = sub_plan
 		self.sub_plan_name = sub_plan_name
 
