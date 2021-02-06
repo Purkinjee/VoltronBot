@@ -35,6 +35,8 @@ class ChannelPointModule(ModuleBase):
 		self.event_listen(EVT_POINT_REDEMPTION, self.points_redeemed)
 
 	def points_redeemed(self, event):
+		message = f"{event.display_name} just redeemed {event.title} for {event.cost} points!"
+		self.buffer_print('VOLTRON', message)
 		if not event.reward_id in self._channel_point_data['attachments']:
 			return
 
@@ -168,7 +170,7 @@ class ChannelPointModule(ModuleBase):
 				command_name = 'Not Set'
 			command = self._channel_point_data['attachments'][reward_id].get('command')
 			self.buffer_print('VOLTRON', f"{count}. {reward_map.get(reward_id, '<deleted>')} - {command_name}")
-			for message in self._channel_point_data['attachments'][reward_id]['message_command']:
+			for message in self._channel_point_data['attachments'][reward_id].get('message_command', {}):
 				self.buffer_print('VOLTRON', f"    {message}: !{self._channel_point_data['attachments'][reward_id]['message_command'][message]}")
 
 			selection_map[count] = reward_id

@@ -294,6 +294,13 @@ class IRCBase:
 			channel = match.group(3)
 
 			if re.search(r'msg-id=raid', twitch_shit):
+				## Parse Twitch user ID out of twitch_shit
+				id_match = re.search(
+					r'user-id=(\d+)',
+					twitch_shit
+				)
+				user_id = int(id_match.group(1)) if id_match else False
+
 				display_name = "Unknown"
 				display_match = re.search(
 					r'display-name=([^; ]*)',
@@ -308,7 +315,7 @@ class IRCBase:
 				if viewer_count_match:
 					viewer_count = int(viewer_count_match.group(1))
 
-				self.handle_raid(display_name, viewer_count)
+				self.handle_raid(display_name, user_id, viewer_count)
 				return True
 
 		## Otherwise log messages to a text file for now
@@ -317,7 +324,7 @@ class IRCBase:
 	def handle_host(self, display_name):
 		pass
 
-	def handle_raid(self, display_name, viewer_count):
+	def handle_raid(self, display_name, user_id, viewer_count):
 		pass
 
 	def _log(self, msg):
@@ -453,8 +460,8 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 		event = HostEvent(display_name)
 		self.event_queue.put(event)
 
-	def handle_raid(self, display_name, viewer_count):
-		event = RaidEvent(display_name, viewer_count)
+	def handle_raid(self, display_name, user_id, viewer_count):
+		event = RaidEvent(display_name, user_id, viewer_count)
 		self.event_queue.put(event)
 
 	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message):

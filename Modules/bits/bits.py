@@ -13,13 +13,22 @@ class BitsModule(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'attach',
 			self._attach_bits,
-			usage = f'{self.module_name} attach !<command>',
+			usage = f'{self.module_name} attach <!command/none>',
 			description = 'Run !<command> when a user cheers bits in the channel. Set to "none" to remove',
 		))
 
 		self.event_listen(EVT_BITS, self.bits)
 
 	def bits(self, event):
+		message = None
+		if event.is_anonymous:
+			message = f"An anonymous viewer cheered {event.bits_used} bits!"
+		else:
+			message = f"{event.display_name} just cheered {event.bits_used} bits!"
+
+		if message is not None:
+			self.buffer_print('VOLTRON', message)
+
 		command = self._module_data['attachments'].get('cheer')
 		if not command:
 			return

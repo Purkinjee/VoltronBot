@@ -13,7 +13,7 @@ class SubModule(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'attach',
 			self._attach_sub,
-			usage = f'{self.module_name} attach !<command>',
+			usage = f'{self.module_name} attach <!command/none>',
 			description = 'Run !<command> when a user subs to the channel. Set to "none" to remove',
 		))
 
@@ -27,6 +27,17 @@ class SubModule(ModuleBase):
 		self.event_listen(EVT_SUBSCRIPTION, self.subscription)
 
 	def subscription(self, event):
+		message = None
+		if event.is_anonymous:
+			message = f"Anonymous sub ({event.sub_tier_name}) was gifted to {event.recipient_display_name}"
+		elif event.is_gift:
+			message = f"{event.display_name} gifted a {event.duration} month {event.sub_tier_name} sub to {event.recipient_display_name}"
+		else:
+			message = f"{event.display_name} just subscribed! ({event.sub_tier_name}, {event.cumulative_months} months)"
+
+		if message is not None:
+			self.buffer_print("VOLTRON", message)
+		
 		if event.is_gift:
 			command = self._module_data['attachments'].get('gift')
 			command_event = ChatCommandEvent(

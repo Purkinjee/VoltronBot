@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+from lib.common import get_broadcaster
 
 EVT_CHATCOMMAND = 'CHATCOMMAND'
 EVT_CHATMESSAGE = 'CHATMESSAGE'
@@ -183,9 +184,23 @@ class HostEvent(Event):
 	type = EVT_HOST
 	def __init__(self, display_name):
 		self.display_name = display_name
+		self._user_id = None
+
+	@property
+	def user_id(self):
+		if self._user_id is not None:
+			return self._user_id
+
+		broadcaster = get_broadcaster()
+		user_info = broadcaster.twitch_api.get_user(self.display_name.lower())
+
+		self._user_id = user_info['id']
+		return self._user_id
+
 
 class RaidEvent(Event):
 	type = EVT_RAID
-	def __init__(self, display_name, viewer_count):
+	def __init__(self, display_name, user_id, viewer_count):
 		self.display_name = display_name
 		self.viewer_count = viewer_count
+		self.user_id = user_id

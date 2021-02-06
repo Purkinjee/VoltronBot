@@ -43,7 +43,7 @@ class OBSThread(threading.Thread):
 			command = event
 			#ws = event[1]
 
-			if command.get('action') in ('timedsource', 'timedfilter'):
+			if command.get('action') in ('timedsource', 'timedfilter', 'hidetimedsource', 'hidetimedfilter'):
 				self.render_cycle(command)
 
 			elif command.get('action') == 'scenechange':
@@ -83,16 +83,21 @@ class OBSThread(threading.Thread):
 		kwargs = {}
 		func = None
 		action = command.get('action')
-		if action == 'timedfilter':
+		render_order = (True, False)
+		if action in ('timedfilter', 'hidetimedfilter'):
 			args = (command['source'], command['filter'])
 			kwargs = {}
 			func = self.render_filter
 			ident = f"timedfilter_{command['source']}_{command['filter']}"
-		elif action == 'timedsource':
+			if action == 'hidetimedfilter':
+				render_order = (False, True)
+		elif action in ('timedsource', 'hidetimedsource'):
 			args = (command['scene'], command['source'])
 			kwargs = {}
 			func = self.render_source
 			ident = f"timedsource_{command['scene']}_{command['source']}"
+			if action == 'hidetimedsource':
+				render_order = (False, True)
 
 		if func is None:
 			return
@@ -102,7 +107,7 @@ class OBSThread(threading.Thread):
 		if end_time > time.time():
 			render_time = (end_time - time.time()) + 0.5
 
-		for render in (True, False):
+		for render in render_order:
 			kwargs_copy = kwargs.copy()
 			kwargs_copy['render'] = render
 			t = threading.Thread(
@@ -257,10 +262,24 @@ class OBS(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
+			'hide_timed_source',
+			self._hide_timed_source,
+			usage = f'{self.module_name} hide_timed_source !<command> <scene> <source> <time>',
+			description = 'Adds a command to hide <source> in <scene> for <time> seconds. Can use "current" for <scene>.',
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
 			'add_timed_filter',
 			self._add_timed_filter,
 			usage = f'{self.module_name} add_timed_filter !<command> <source> <filter> <time>',
 			description = 'Adds a command to show <filter> for <source> for <time> seconds.',
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'hide_timed_filter',
+			self._hide_timed_filter,
+			usage = f'{self.module_name} hide_timed_filter !<command> <source> <filter> <time>',
+			description = 'Adds a command to hide <filter> for <source> for <time> seconds.',
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -293,6 +312,12 @@ class OBS(ModuleBase):
 		return True
 
 	def _add_timed_source(self, input, command):
+		self._hide_show_timed_source('timedsouce', input, command)
+
+	def _hide_timed_source(self, input, command):
+		self._hide_show_timed_source('hidetimedsource', input, command)
+
+	def _hide_show_timed_source(self, action, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
 		if not match:
 			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
@@ -311,7 +336,7 @@ class OBS(ModuleBase):
 			return
 
 		self._obs_data['commands'][command] = {
-			'action': 'timedsource',
+			'action': action,
 			'scene': scene,
 			'source': source,
 			'time':  seconds
@@ -321,6 +346,12 @@ class OBS(ModuleBase):
 		self.buffer_print('VOLTRON', f'Command !{command} successfully added')
 
 	def _add_timed_filter(self, input, command):
+		self._add_hide_timed_filter('timedfilter', input, command)
+
+	def _hide_timed_filter(self, input, command):
+		self._add_hide_timed_filter('hidetimedfilter', input, command)
+
+	def _add_hide_timed_filter(self, action, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
 		if not match:
 			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
@@ -336,7 +367,7 @@ class OBS(ModuleBase):
 			return
 
 		self._obs_data['commands'][command] = {
-			'action': 'timedfilter',
+			'action': action,
 			'filter': filter,
 			'source': source,
 			'time':  seconds
@@ -344,6 +375,7 @@ class OBS(ModuleBase):
 
 		self.save_module_data(self._obs_data)
 		self.buffer_print('VOLTRON', f'Command !{command} successfully added')
+
 
 	def _add_scene_change(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ?(.+)?$', input)
