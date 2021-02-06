@@ -15,6 +15,7 @@ import glob
 import re
 import requests
 import json
+import humanize
 
 from lib.TwitchIRC import BroadcasterIRC, BotIRC
 from VoltronUI import VoltronUI
