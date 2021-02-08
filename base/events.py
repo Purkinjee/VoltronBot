@@ -147,6 +147,15 @@ class SubscriptionEvent(Event):
 		return self.context == 'anonsubgift'
 
 	@property
+	def sub_tier(self):
+		return {
+			'prime': 1,
+			'1000': 1,
+			'2000': 2,
+			'3000': 3
+		}.get(str(self.sub_plan).lower(), 'Unknown')
+
+	@property
 	def sub_tier_name(self):
 		return {
 			'prime': 'Prime',
