@@ -10,26 +10,10 @@ class Timer(ModuleBase):
 		if not 'timers' in self._timer_data:
 			self._timer_data['timers'] = []
 
-		self.register_admin_command(ModuleAdminCommand(
-			'permission',
-			self._set_permission,
-			usage = f'{self.module_name} permission <all/mod/brodcaster>',
-			description = 'Set permission for timer use in chat'
-		))
-
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 		self.event_listen(EVT_TIMER, self.timer_check)
 
 	def command(self, event):
-		if event.command != 'timer':
-			return False
-
-		if self.broadcaster_only and not event.is_broadcaster:
-			return False
-
-		if self.mod_only and not event.is_mod:
-			return False
-
 		match = re.search(r'^([\d]+) ?(.+)?$', event.message)
 		if not match:
 			return False
@@ -62,33 +46,6 @@ class Timer(ModuleBase):
 		if to_remove:
 			self.save_module_data(self._timer_data)
 
-	def _set_permission(self, input, command):
-		if input.lower().strip() not in ['all', 'mod', 'broadcaster']:
-			current_permission = self._timer_data.get('permission', 'all')
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current permission: {current_permission}')
-			return
-
-		self._timer_data['permission'] = input.lower().strip()
-		self.save_module_data(self._timer_data)
-
-		self.buffer_print('VOLTRON', f'Timer permission set to {input.lower().strip()}')
 
 	def shutdown(self):
 		self.save_module_data(self._timer_data)
-
-	@property
-	def mod_only(self):
-		permission = self._timer_data.get('permission', 'all')
-		if permission == 'mod':
-			return True
-
-		return False
-
-	@property
-	def broadcaster_only(self):
-		permission = self._timer_data.get('permission', 'all')
-		if permission == 'broadcaster':
-			return True
-
-		return False
