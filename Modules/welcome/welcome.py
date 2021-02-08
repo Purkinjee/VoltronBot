@@ -6,7 +6,7 @@ import humanize
 
 from base.module import ModuleBase, ModuleAdminCommand
 from lib.common import get_broadcaster
-from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND, EVT_STREAM_STATUS, ChatMessageEvent
+from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND, EVT_STREAM_STATUS, ChatMessageEvent, ChatCommandEvent
 
 class Welcome(ModuleBase):
 	module_name = "welcome"
@@ -99,7 +99,7 @@ class Welcome(ModuleBase):
 			description = 'Test the welcome event for <user> if one is set.'
 		))
 
-		self.event_listen(EVT_FIRST_MESSAGE, self.first_message)
+		self.event_listen(EVT_FIRST_MESSAGE, self.send_first_message_command)
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 		self.event_listen(EVT_STREAM_STATUS, self.status_change)
 
@@ -160,8 +160,27 @@ class Welcome(ModuleBase):
 		if event.command != self._sound_command:
 			return False
 
-		return self.first_message(event, run_by_command=True)
+		run_by_command = True
+		if hasattr(event, 'run_by_command'):
+			run_by_command = event.run_by_command
 
+		return self.first_message(event, run_by_command=run_by_command)
+
+
+	def send_first_message_command(self, event):
+		command = ChatCommandEvent(
+			self._sound_command,
+			event.message,
+			event.display_name,
+			event.user_id,
+			event.is_vip,
+			event.is_mod,
+			event.is_broadcaster,
+			bypass_permissions = False,
+			run_by_command = False
+		)
+
+		self.event_loop.event_queue.put(command)
 
 	def _set_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)

@@ -33,6 +33,7 @@ class EntranceEvents(ModuleBase):
 					event.message,
 					event.display_name,
 					event.user_id,
+					event.is_vip,
 					event.is_mod,
 					event.is_broadcaster
 				))

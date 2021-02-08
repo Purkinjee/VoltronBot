@@ -49,9 +49,10 @@ class CooldownModule(ModuleBase):
 			description = 'Delete cooldowns for !<command>'
 		))
 
-		#self.event_listen(EVT_CHATCOMMAND, self.command)
+		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
+
 		if not event.command in self._cooldown_data['commands']:
 			return
 

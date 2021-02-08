@@ -107,10 +107,11 @@ class StreamStatusEvent(Event):
 
 class FirstMessageEvent(Event):
 	type = EVT_FIRST_MESSAGE
-	def __init__(self, message, display_name, user_id, is_mod, is_broadcaster):
+	def __init__(self, message, display_name, user_id, is_vip, is_mod, is_broadcaster):
 		self.message = message
 		self.display_name = display_name
 		self.user_id = user_id
+		self.is_vip = is_vip
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
 
