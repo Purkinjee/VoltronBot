@@ -79,7 +79,7 @@ class VersionCheckThread(threading.Thread):
 				self.buffer_queue.put(('VOLTRON', "Download the update using the following URL:"))
 				self.buffer_queue.put(('VOLTRON', resp['url']))
 			else:
-				self.buffer_queue.put(('INFO', 'Voltron Bot is up to date!'))
+				self.buffer_queue.put(('VOLTRON', 'Voltron Bot is up to date!'))
 				changelog = resp.get('changelog')
 				notice = resp.get('notice')
 				if changelog:
