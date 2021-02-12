@@ -14,6 +14,8 @@ class Timer(ModuleBase):
 		self.event_listen(EVT_TIMER, self.timer_check)
 
 	def command(self, event):
+		if event.command != 'timer':
+			return
 		match = re.search(r'^([\d]+) ?(.+)?$', event.message)
 		if not match:
 			return False
