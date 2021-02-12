@@ -312,7 +312,7 @@ class OBS(ModuleBase):
 		return True
 
 	def _add_timed_source(self, input, command):
-		self._hide_show_timed_source('timedsouce', input, command)
+		self._hide_show_timed_source('timedsource', input, command)
 
 	def _hide_timed_source(self, input, command):
 		self._hide_show_timed_source('hidetimedsource', input, command)
