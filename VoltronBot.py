@@ -254,7 +254,12 @@ class VoltronBot:
 		if twitch_id and twitch_id in self.irc_map:
 			self.irc_map[twitch_id].send_message(message)
 		else:
-			self.irc_map[self.default_account.twitch_user_id].send_message(message)
+			if not self.default_account:
+				self.buffer_queue.put(("ERR", "No default account set."))
+				self.buffer_queue.put(("ERR", "Set one using 'account default'"))
+				self.irc_map[get_broadcaster().twitch_user_id].send_message(message)
+			else:
+				self.irc_map[self.default_account.twitch_user_id].send_message(message)
 
 	def send_private_message(self, user_name, message, twitch_id=None):
 		## Make this work when we have a pubsub thread

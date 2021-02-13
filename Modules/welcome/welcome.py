@@ -297,19 +297,6 @@ class Welcome(ModuleBase):
 
 		self.buffer_print('VOLTRON', f"Current audio device: {self._sound_data.get(key, 'Default')}")
 
-		# devices = sounddevice.query_devices()
-		# count = -1
-		# valid_devices = {}
-		# for device in devices:
-		# 	count += 1
-		# 	if device['max_output_channels'] < 1:
-		# 		continue
-		# 	dev_str = f"{count} {device['name']}"
-		# 	self.buffer_print('VOLTRON', dev_str)
-		# 	valid_devices[count] = device
-		#
-		# self.buffer_print('VOLTRON', f"Currently set to: {self._sound_data.get(key, 'Default')}")
-
 		def save(prompt):
 			if prompt.strip() == 'c':
 				self.update_status_text()
@@ -330,16 +317,6 @@ class Welcome(ModuleBase):
 			if len(valid_devices) < device_id or device_id < 1:
 				self.buffer_print('VOLTRON', 'Invalid Selection')
 				return False
-
-			# match = re.search(r'^(\d+)$', prompt)
-			# if not match:
-			# 	return False
-			#
-			# device_id = int(match.group(1))
-			# device = valid_devices.get(device_id, None)
-			# if not device:
-			# 	self.buffer_print('VOLTRON', 'Invalid Selection')
-			# 	return False
 
 			device = valid_devices[device_id - 1]
 			device_name = f"{device['name']}, {hostapi}"
