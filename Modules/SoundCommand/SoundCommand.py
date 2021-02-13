@@ -86,15 +86,19 @@ class SoundCommand(ModuleBase):
 
 	def _select_audio_device(self, input, command):
 		devices = sounddevice.query_devices()
-		count = -1
-		valid_devices = {}
-		for device in devices:
-			count += 1
-			if device['max_output_channels'] < 1:
-				continue
-			dev_str = f"{count} {device['name']}"
-			self.buffer_print('VOLTRON', dev_str)
-			valid_devices[count] = device
+
+		hostapi = None
+		valid_devices = []
+		for api in sounddevice.query_hostapis():
+			match = re.search('DirectSound', api['name'], re.IGNORECASE)
+			if match:
+				hostapi = api['name']
+				for device_id in api['devices']:
+					device = sounddevice.query_devices()[device_id]
+					if device['max_output_channels'] > 0:
+						valid_devices.append(device)
+						self.buffer_print('VOLTRON', f"{len(valid_devices)}. {device['name']}")
+
 		self.buffer_print('VOLTRON', f'Current audio device: {self.audio_device}')
 
 		def save(prompt):
@@ -107,20 +111,23 @@ class SoundCommand(ModuleBase):
 				self.buffer_print('VOLTRON', 'Default audio device selected.')
 				self.update_status_text()
 				return True
-			match = re.search(r'^(\d+)$', prompt)
-			if not match:
+
+			if not prompt.isdigit():
 				return False
 
-			device_id = int(match.group(1))
-			device = valid_devices.get(device_id, None)
-			if not device:
+			device_id = int(prompt)
+			if len(valid_devices) < device_id or device_id < 1:
 				self.buffer_print('VOLTRON', 'Invalid Selection')
 				return False
 
-			self._commands['audio_device'] = prompt
+			device = valid_devices[device_id - 1]
+
+			device_name = f"{device['name']}, {hostapi}"
+
+			self._commands['audio_device'] = device_name
 			self.save_module_data(self._commands)
 			self.update_status_text()
-			self.buffer_print('VOLTRON', f"Audio device set to {valid_devices[device_id]['name']}")
+			self.buffer_print('VOLTRON', f"Audio device set to {device['name']}")
 			return True
 
 		self.update_status_text('Select Audio Device. c to cancel. -1 to reset to default.')
@@ -221,8 +228,10 @@ class SoundCommand(ModuleBase):
 	@property
 	def audio_device(self):
 		device = self._commands.get('audio_device', None)
-		if device is not None:
-			device = int(device)
+		if device is None:
+			return None
+		elif device.isdigit():
+			return int(device)
 		return device
 
 

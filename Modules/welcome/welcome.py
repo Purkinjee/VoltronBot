@@ -282,17 +282,33 @@ class Welcome(ModuleBase):
 
 	def _select_audio_device(self, key):
 		devices = sounddevice.query_devices()
-		count = -1
-		valid_devices = {}
-		for device in devices:
-			count += 1
-			if device['max_output_channels'] < 1:
-				continue
-			dev_str = f"{count} {device['name']}"
-			self.buffer_print('VOLTRON', dev_str)
-			valid_devices[count] = device
 
-		self.buffer_print('VOLTRON', f"Currently set to: {self._sound_data.get(key, 'Default')}")
+		hostapi = None
+		valid_devices = []
+		for api in sounddevice.query_hostapis():
+			match = re.search('DirectSound', api['name'], re.IGNORECASE)
+			if match:
+				hostapi = api['name']
+				for device_id in api['devices']:
+					device = sounddevice.query_devices()[device_id]
+					if device['max_output_channels'] > 0:
+						valid_devices.append(device)
+						self.buffer_print('VOLTRON', f"{len(valid_devices)}. {device['name']}")
+
+		self.buffer_print('VOLTRON', f"Current audio device: {self._sound_data.get(key, 'Default')}")
+
+		# devices = sounddevice.query_devices()
+		# count = -1
+		# valid_devices = {}
+		# for device in devices:
+		# 	count += 1
+		# 	if device['max_output_channels'] < 1:
+		# 		continue
+		# 	dev_str = f"{count} {device['name']}"
+		# 	self.buffer_print('VOLTRON', dev_str)
+		# 	valid_devices[count] = device
+		#
+		# self.buffer_print('VOLTRON', f"Currently set to: {self._sound_data.get(key, 'Default')}")
 
 		def save(prompt):
 			if prompt.strip() == 'c':
@@ -307,20 +323,31 @@ class Welcome(ModuleBase):
 				self.update_status_text()
 				return True
 
-			match = re.search(r'^(\d+)$', prompt)
-			if not match:
+			if not prompt.isdigit():
 				return False
 
-			device_id = int(match.group(1))
-			device = valid_devices.get(device_id, None)
-			if not device:
+			device_id = int(prompt)
+			if len(valid_devices) < device_id or device_id < 1:
 				self.buffer_print('VOLTRON', 'Invalid Selection')
 				return False
 
-			self._sound_data[key] = prompt
+			# match = re.search(r'^(\d+)$', prompt)
+			# if not match:
+			# 	return False
+			#
+			# device_id = int(match.group(1))
+			# device = valid_devices.get(device_id, None)
+			# if not device:
+			# 	self.buffer_print('VOLTRON', 'Invalid Selection')
+			# 	return False
+
+			device = valid_devices[device_id - 1]
+			device_name = f"{device['name']}, {hostapi}"
+
+			self._sound_data[key] = device_name
 			self.save_module_data(self._sound_data)
 			self.update_status_text()
-			self.buffer_print('VOLTRON', f"Audio device set to {valid_devices[device_id]['name']}")
+			self.buffer_print('VOLTRON', f"Audio device set to {device['name']}")
 			return True
 
 		self.update_status_text('Select Audio Device. -1 for default. c to cancel.')
@@ -424,15 +451,19 @@ class Welcome(ModuleBase):
 	@property
 	def entrance_sound_device(self):
 		device = self._sound_data.get('entrance_sound_device', None)
-		if device is not None:
-			device = int(device)
+		if device is None:
+			return None
+		elif device.isdigit():
+			return int(device)
 		return device
 
 	@property
 	def alert_sound_device(self):
 		device = self._sound_data.get('alert_sound_device', None)
-		if device is not None:
-			device = int(device)
+		if device is None:
+			return None
+		elif device.isdigit():
+			return int(device)
 		return device
 
 	@property
