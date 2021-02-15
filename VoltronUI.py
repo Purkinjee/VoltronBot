@@ -70,7 +70,7 @@ class UIBufferQueue(threading.Thread):
 		extra = ""
 		if input[0] == 'MODULE' and len(input) > 2:
 			output_str = str(input[2])
-			extra = "<MODULE> "
+			#extra = "<MODULE> "
 			tag = str(input[1]).upper()
 		else:
 			output_str = str(input[1])
@@ -110,23 +110,26 @@ class VoltronOutputLexer(RegexLexer):
 
 	tokens = {
 		'root': [
-			(r'\<MODULE\>\s(\<WELCOME\>\s)(First message:\s)([^ ]+)(\s\(Not Following\))', bygroups(
+			(r'^(\[.*\]\s)(\<WELCOME\>\s)(First message:\s)([^ ]+)(\s\(Not Following\))', bygroups(
+				token.Name.Attribute,
 				token.Name.Variable,
 				token.Text,
 				token.Name.Decorator,
 				token.Name.Exception
 			)),
-			(r'\<MODULE\>\s(\<WELCOME\>\s)(First message:\s)([^ ]+)', bygroups(
+			(r'^(\[.*\]\s)(\<WELCOME\>\s)(First message:\s)([^ ]+)', bygroups(
+				token.Name.Attribute,
 				token.Name.Variable,
 				token.Text,
 				token.Name.Decorator
 			)),
-			(r'\<MODULE\>\s(\<.+\>)', bygroups(token.Name.Variable)),
-			(r'^\[.*\]', token.Name.Attribute),
-			(r'\<VOLTRON\>', token.Name.Variable),
-			(r'<INFO\>.*$', token.Name.Attribute),
-			(r'<STATUS>.*$', token.Name.Label),
-			(r'<ERR>.*$', token.Name.Exception),
+
+			(r'^(\[.*\]\s)(\<VOLTRON\>)', bygroups(token.Name.Attribute, token.Name.Variable)),
+			(r'^(\[.*\]\s)(<INFO\>.*)$', bygroups(token.Name.Attribute, token.Name.Attribute)),
+			(r'^(\[.*\]\s)(<STATUS>.*)$', bygroups(token.Name.Attribute, token.Name.Label)),
+			(r'^(\[.*\]\s)(<ERR>.*)$', bygroups(token.Name.Attribute, token.Name.Exception)),
+			(r'^(\[.*\]\s)(\<.+\>)', bygroups(token.Name.Attribute, token.Name.Variable)),
+
 
 		]
 	}
