@@ -137,7 +137,7 @@ class ModuleBase:
 			return True
 
 
-		self.update_status_text('Select account')
+		self.update_status_text('Select account. c to cancel.')
 		self.get_prompt('Account Number> ', selection_made)
 		return selected_user
 

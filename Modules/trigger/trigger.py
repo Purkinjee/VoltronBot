@@ -1,4 +1,5 @@
 import re
+import time
 
 from lib.common import get_default_user
 from base.module import ModuleBase, ModuleAdminCommand
@@ -6,6 +7,7 @@ from base.events import EVT_CHATCOMMAND, EVT_CHATMESSAGE
 
 class Trigger(ModuleBase):
 	module_name = 'trigger'
+	internal_cd = 5
 
 	def setup(self):
 		self.regex = r''
@@ -18,6 +20,8 @@ class Trigger(ModuleBase):
 		self._triggers = self.get_module_data()
 		if not 'triggers' in self._triggers:
 			self._triggers['triggers'] = {}
+		if not 'cooldowns' in self._triggers:
+			self._triggers['cooldowns'] = {}
 		self._compile_regex()
 
 		self.default_user = get_default_user()
@@ -30,9 +34,9 @@ class Trigger(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'account',
-			self._set_account,
-			usage = f'{self.module_name} account',
+			'trigger_account',
+			self._set_trigger_account,
+			usage = f'{self.module_name} trigger_account trigger',
 			description = 'Response account for triggers',
 		))
 
@@ -41,8 +45,6 @@ class Trigger(ModuleBase):
 
 	def chat_message(self, event):
 		if not self.regex:
-			return
-		if int(event.user_id) == int(self.response_twitch_id):
 			return
 		words_re = re.findall(self.regex, event.message, re.IGNORECASE)
 
@@ -53,8 +55,18 @@ class Trigger(ModuleBase):
 			if not word.lower() in self._triggers['triggers']:
 				continue
 			messages = self._triggers['triggers'][word.lower()].get('response', [])
+
+			last_run = self._triggers['cooldowns'].get(word, 0)
+			if time.time() - last_run < self.internal_cd:
+				continue
+
+			response_twitch_id = self._triggers['triggers'][word.lower()].get('account')
+
 			for message in messages:
-				self.send_chat_message(message, event=event, twitch_id=self.response_twitch_id)
+				self.send_chat_message(message, event=event, twitch_id=response_twitch_id)
+
+			self._triggers['cooldowns'][word] = time.time()
+
 
 	def command(self, event):
 		if event.command in self._static_commands:
@@ -65,11 +77,23 @@ class Trigger(ModuleBase):
 		for trigger in self._triggers['triggers']:
 			self.buffer_print('VOLTRON', f'  {trigger}')
 
+	def _set_trigger_account(self, input, command):
+		match = re.search('^([^ ]+)$', input)
+		if not match:
+			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			return
 
-	def _set_account(self, input, command):
+		word = match.group(1).lower().strip()
+		if not word in self._triggers['triggers']:
+			self.buffer_print('VOLTRON', f'No trigger configured for {word}')
+			return
+
+
 		def account_selected(account):
-			self._triggers['response_twitch_id'] = account.twitch_user_id
+			self._triggers['triggers'][word]['account'] = account.twitch_user_id
 			self.save_module_data(self._triggers)
+			self.buffer_print('VOLTRON', f"Response account for '{word}' set to {account.display_name}")
+
 
 		self.select_account(account_selected)
 
@@ -90,6 +114,8 @@ class Trigger(ModuleBase):
 
 			self.save_module_data(self._triggers)
 			self.send_chat_message(f'Trigger {trigger} successfully added!')
+
+
 
 	def _append_trigger(self, event):
 		if not event.is_mod:
@@ -145,10 +171,3 @@ class Trigger(ModuleBase):
 
 	def shutdown(self):
 		self.save_module_data(self._triggers)
-
-	@property
-	def response_twitch_id(self):
-		id = self._triggers.get('response_twitch_id', None)
-		if not id:
-			id = self.default_user.twitch_user_id
-		return int(id)
