@@ -43,7 +43,7 @@ class SubModule(ModuleBase):
 			message = f"{event.display_name} just subscribed! ({event.sub_tier_name}, {event.cumulative_months} months)"
 
 		if message is not None:
-			self.buffer_print("VOLTRON", message)
+			self.print(message)
 
 		if event.is_gift:
 			command = self._module_data['attachments'].get('gift')
@@ -98,7 +98,7 @@ class SubModule(ModuleBase):
 		## !command or none followed by 1, 2, or 3
 		match = re.search(r'^(!([^ ]+)|none)((\s+([1-3])$)|$)', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -110,9 +110,9 @@ class SubModule(ModuleBase):
 		if command == 'none':
 			self._module_data['attachments'][key] = None
 			if tier is None:
-				self.buffer_print('VOLTRON', 'Sub (No Tier) attachment removed')
+				self.print('Sub (No Tier) attachment removed')
 			else:
-				self.buffer_print('VOLTRON', f'Sub (Tier {tier}) attachment removed')
+				self.print(f'Sub (Tier {tier}) attachment removed')
 			return
 		else:
 			command = match.group(2)
@@ -122,13 +122,13 @@ class SubModule(ModuleBase):
 		tier_str = "No Tier"
 		if tier:
 			tier_str = f'Tier {tier}'
-		self.buffer_print('VOLTRON', f'Subscriptions ({tier_str}) now attached to !{command}')
+		self.print(f'Subscriptions ({tier_str}) now attached to !{command}')
 
 	def _attach_gift(self, input, command):
 		## !command or none followed by 1, 2, or 3
 		match = re.search(r'^(!([^ ]+)|none)((\s+([1-3])$)|$)', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -140,9 +140,9 @@ class SubModule(ModuleBase):
 		if command == 'none':
 			self._module_data['attachments'][key] = None
 			if tier is None:
-				self.buffer_print('VOLTRON', 'Sub (No Tier) attachment removed')
+				self.print('Sub (No Tier) attachment removed')
 			else:
-				self.buffer_print('VOLTRON', f'Sub (Tier {tier}) attachment removed')
+				self.print(f'Sub (Tier {tier}) attachment removed')
 			return
 		else:
 			command = match.group(2)
@@ -152,7 +152,7 @@ class SubModule(ModuleBase):
 		tier_str = "No Tier"
 		if tier:
 			tier_str = f'Tier {tier}'
-		self.buffer_print('VOLTRON', f'Gift Subscriptions ({tier_str}) now attached to !{command}')
+		self.print(f'Gift Subscriptions ({tier_str}) now attached to !{command}')
 
 	def _list(self, input, commmand):
 		key_map = {
@@ -166,7 +166,7 @@ class SubModule(ModuleBase):
 			'gift3': 'Gift Sub (Tier 3)'
 		}
 
-		self.buffer_print('VOLTRON', 'Sub Attachments:')
+		self.print('Sub Attachments:')
 		for key in ('sub', 'sub1', 'sub2', 'sub3', 'gift', 'gift1', 'gift2', 'gift3'):
 			command = self._module_data['attachments'].get(key)
 			if command is None:
@@ -174,7 +174,7 @@ class SubModule(ModuleBase):
 			else:
 				command = f'!{command}'
 
-			self.buffer_print('VOLTRON', f"  {key_map[key]}: {command}")
+			self.print(f"  {key_map[key]}: {command}")
 
 
 	def shutdown(self):

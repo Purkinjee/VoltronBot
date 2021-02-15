@@ -142,11 +142,11 @@ class Welcome(ModuleBase):
 
 		if not run_by_command:
 			broadcaster = get_broadcaster()
-			follow_str = "NOT FOLLOWING"
+			follow_str = "Not Following"
 			follow_time = broadcaster.twitch_api.get_follow_time(broadcaster.twitch_user_id, event.user_id)
 			if follow_time is not None:
 				follow_str = f"Followed {humanize.naturaltime(follow_time)}"
-			self.buffer_print('VOLTRON', f'First message: {event.display_name} ({follow_str})')
+			self.print(f'First message: {event.display_name} ({follow_str})')
 
 		return handled
 
@@ -186,20 +186,20 @@ class Welcome(ModuleBase):
 		match = re.search(r'^!([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current Sound Command: !{self._sound_command}')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Current Sound Command: !{self._sound_command}')
 			return
 
 		self._sound_data['sound_command'] = match.group(1)
 		self.save_module_data(self._sound_data)
 		self._sound_command = self._sound_data['sound_command']
-		self.buffer_print('VOLTRON', f'Entrance sound command set to !{self._sound_command}')
+		self.print(f'Entrance sound command set to !{self._sound_command}')
 
 	def _add_entrance_sound(self, input, command):
 		match = re.search(r'^@?([^ ]+) ([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		login = match.group(1)
@@ -212,7 +212,7 @@ class Welcome(ModuleBase):
 		user_info = api.get_user(login)
 
 		if not user_info:
-			self.buffer_print('VOLTRON', f'User not found: {login}')
+			self.print(f'User not found: {login}')
 			return
 
 		if user_info['id'] not in self._sound_data['user_sounds']:
@@ -225,12 +225,12 @@ class Welcome(ModuleBase):
 		self.save_module_data(self._sound_data)
 
 		display_name = user_info['display_name']
-		self.buffer_print('VOLTRON', f'Sound ({sound}) added for {display_name}')
+		self.print(f'Sound ({sound}) added for {display_name}')
 
 	def _set_alert_sound(self, input, command):
 		match = re.search(r'^([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		sound_file = match.group(1)
@@ -239,46 +239,46 @@ class Welcome(ModuleBase):
 			del self._sound_data['alert_sound']
 		else:
 			self._sound_data['alert_sound'] = sound_file
-		self.buffer_print('VOLTRON', f'Alert sound set to {sound_file}')
+		self.print(f'Alert sound set to {sound_file}')
 		self.save_module_data(self._sound_data)
 
 	def _remove_entrance_sound(self, input, command):
 		match = re.search(r'^([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		login = match.group(1)
 
 		user_info = get_broadcaster().twitch_api.get_user(login)
 		if not user_info:
-			self.buffer_print('VOLTRON', f'User not found: {login}')
+			self.print(f'User not found: {login}')
 			return
 
 		if not user_info['id'] in self._sound_data['user_sounds'].keys():
-			self.buffer_print('VOLTRON', f"No sound exists for user: {user_info['display_name']}")
+			self.print(f"No sound exists for user: {user_info['display_name']}")
 			return
 
 		del self._sound_data['user_sounds'][user_info['id']]
 		self.save_module_data(self._sound_data)
-		self.buffer_print('VOLTRON', f"Sound for {user_info['display_name']} removed.")
+		self.print(f"Sound for {user_info['display_name']} removed.")
 
 	def _list_entrance_sounds(self, input, command):
-		self.buffer_print('VOLTRON', 'Welcome Events:')
+		self.print('Welcome Events:')
 		for user in self._sound_data['user_sounds']:
 			sound_data = self._sound_data['user_sounds'][user]
-			self.buffer_print('VOLTRON', f"  {sound_data['display_name']}:")
+			self.print(f"  {sound_data['display_name']}:")
 			sound_file = sound_data.get('sound_file', 'None')
 			message = sound_data.get('message', 'None')
-			self.buffer_print('VOLTRON', f'    Sound File: {sound_file}')
+			self.print(f'    Sound File: {sound_file}')
 			if sound_file:
-				self.buffer_print('VOLTRON', f"    Volume: {sound_data.get('volume', 100)}%")
-			self.buffer_print('VOLTRON', f'    message: {message}')
+				self.print(f"    Volume: {sound_data.get('volume', 100)}%")
+			self.print(f'    message: {message}')
 
 	def _show_directory(self, input, command):
-		self.buffer_print('VOLTRON', 'Media Directory:')
-		self.buffer_print('VOLTRON', self.media_directory)
+		self.print('Media Directory:')
+		self.print(self.media_directory)
 
 	def _select_audio_device(self, key):
 		devices = sounddevice.query_devices()
@@ -293,9 +293,9 @@ class Welcome(ModuleBase):
 					device = sounddevice.query_devices()[device_id]
 					if device['max_output_channels'] > 0:
 						valid_devices.append(device)
-						self.buffer_print('VOLTRON', f"{len(valid_devices)}. {device['name']}")
+						self.print(f"{len(valid_devices)}. {device['name']}")
 
-		self.buffer_print('VOLTRON', f"Current audio device: {self._sound_data.get(key, 'Default')}")
+		self.print(f"Current audio device: {self._sound_data.get(key, 'Default')}")
 
 		def save(prompt):
 			if prompt.strip() == 'c':
@@ -306,7 +306,7 @@ class Welcome(ModuleBase):
 				if key in self._sound_data:
 					del self._sound_data[key]
 					self.save_module_data(self._sound_data)
-				self.buffer_print('VOLTRON', 'Audio device set to default')
+				self.print('Audio device set to default')
 				self.update_status_text()
 				return True
 
@@ -315,7 +315,7 @@ class Welcome(ModuleBase):
 
 			device_id = int(prompt)
 			if len(valid_devices) < device_id or device_id < 1:
-				self.buffer_print('VOLTRON', 'Invalid Selection')
+				self.print('Invalid Selection')
 				return False
 
 			device = valid_devices[device_id - 1]
@@ -324,7 +324,7 @@ class Welcome(ModuleBase):
 			self._sound_data[key] = device_name
 			self.save_module_data(self._sound_data)
 			self.update_status_text()
-			self.buffer_print('VOLTRON', f"Audio device set to {device['name']}")
+			self.print(f"Audio device set to {device['name']}")
 			return True
 
 		self.update_status_text('Select Audio Device. -1 for default. c to cancel.')
@@ -337,7 +337,7 @@ class Welcome(ModuleBase):
 		match = re.search(r'^@?([^ ]+) (.+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		login = match.group(1)
@@ -350,7 +350,7 @@ class Welcome(ModuleBase):
 		user_info = api.get_user(login)
 
 		if not user_info:
-			self.buffer_print('VOLTRON', f'User not found: {login}')
+			self.print(f'User not found: {login}')
 			return
 
 		if user_info['id'] not in self._sound_data['user_sounds']:
@@ -363,7 +363,7 @@ class Welcome(ModuleBase):
 		self.save_module_data(self._sound_data)
 
 		display_name = user_info['display_name']
-		self.buffer_print('VOLTRON', f'Message added for {display_name}')
+		self.print(f'Message added for {display_name}')
 
 	def _set_alert_audio_device(self, input, command):
 		self._select_audio_device('alert_sound_device')
@@ -371,7 +371,7 @@ class Welcome(ModuleBase):
 	def _set_volume(self, input, command):
 		match = re.search(r'^([^ ]+) (\d+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		login = match.group(1)
@@ -382,22 +382,22 @@ class Welcome(ModuleBase):
 		user_info = api.get_user(login)
 
 		if not user_info:
-			self.buffer_print('VOLTRON', f'User not found: {login}')
+			self.print(f'User not found: {login}')
 			return
 
 		if user_info['id'] not in self._sound_data['user_sounds']:
-			self.buffer_print('VOLTRON', f'Welcome not configured for: {user_info["display_name"]}')
+			self.print(f'Welcome not configured for: {user_info["display_name"]}')
 			return
 
 		self._sound_data['user_sounds'][user_info['id']]['volume'] = volume
 		self.save_module_data(self._sound_data)
-		self.buffer_print('VOLTRON', f"Volume for {user_info['display_name']} set to {volume}%")
+		self.print(f"Volume for {user_info['display_name']} set to {volume}%")
 
 	def _test_welcome(self, input, command):
 		match = re.search(r'^([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		login = match.group(1)
@@ -407,7 +407,7 @@ class Welcome(ModuleBase):
 		user_info = api.get_user(login)
 
 		if not user_info:
-			self.buffer_print('VOLTRON', f'User not found: {login}')
+			self.print(f'User not found: {login}')
 			return
 
 		event = ChatMessageEvent(

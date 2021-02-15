@@ -36,7 +36,7 @@ class ChannelPointModule(ModuleBase):
 
 	def points_redeemed(self, event):
 		message = f"{event.display_name} just redeemed {event.title} for {event.cost} points!"
-		self.buffer_print('VOLTRON', message)
+		self.print(message)
 		if not event.reward_id in self._channel_point_data['attachments']:
 			return
 
@@ -62,13 +62,13 @@ class ChannelPointModule(ModuleBase):
 		b = get_broadcaster()
 		rewards = b.twitch_api.get_rewards(b.twitch_user_id)
 		if not rewards:
-			self.buffer_print('VOLTRON', 'No rewards set up or unable to retrive from Twitch')
+			self.print('No rewards set up or unable to retrive from Twitch')
 			return
 
 		rewards_list = [(x['id'], x['title']) for x in rewards]
 		index = 1
 		for r in rewards_list:
-			self.buffer_print('VOLTRON', f"{index}. {r[1]}")
+			self.print(f"{index}. {r[1]}")
 			index += 1
 
 		def select_reward(prompt):
@@ -81,7 +81,7 @@ class ChannelPointModule(ModuleBase):
 
 			index = int(prompt)
 			if len(rewards_list) < index or index < 0:
-				self.buffer_print('VOLTRON', 'Invalid Selection')
+				self.print('Invalid Selection')
 				return False
 
 			selected_reward = rewards_list[index-1]
@@ -97,7 +97,7 @@ class ChannelPointModule(ModuleBase):
 						return True
 					match = re.search(r'^!([^ ]+)$', prompt)
 					if not match:
-						self.buffer_print('VOLTRON', 'Please type a valid command beginning with !')
+						self.print('Please type a valid command beginning with !')
 						return False
 
 					command = match.group(1)
@@ -112,7 +112,7 @@ class ChannelPointModule(ModuleBase):
 					self._channel_point_data['attachments'][selected_reward[0]] = reward_data
 					self.save_module_data(self._channel_point_data)
 
-					self.buffer_print('VOLTRON', f"{selected_reward[1]} is now attached to !{command}, message: {required_message}")
+					self.print(f"{selected_reward[1]} is now attached to !{command}, message: {required_message}")
 					self.update_status_text()
 					return True
 
@@ -130,7 +130,7 @@ class ChannelPointModule(ModuleBase):
 
 	def _list_rewards(self, input, command):
 		if not self._channel_point_data['attachments']:
-			self.buffer_print('VOLTRON', 'No channel point redemptions configured')
+			self.print('No channel point redemptions configured')
 			return
 
 		b = get_broadcaster()
@@ -138,7 +138,7 @@ class ChannelPointModule(ModuleBase):
 
 		reward_map = {x['id']:x['title'] for x in rewards}
 
-		self.buffer_print('VOLTRON', 'Attached channel point redemptions:')
+		self.print('Attached channel point redemptions:')
 
 		for reward_id in self._channel_point_data['attachments']:
 			if self._channel_point_data['attachments'][reward_id].get('command'):
@@ -146,13 +146,13 @@ class ChannelPointModule(ModuleBase):
 			else:
 				command_name = 'Not Set'
 
-			self.buffer_print('VOLTRON', f"  {reward_map.get(reward_id, '<deleted>')} - {command_name}")
+			self.print(f"  {reward_map.get(reward_id, '<deleted>')} - {command_name}")
 			for message in self._channel_point_data['attachments'][reward_id].get('message_command', {}):
-				self.buffer_print('VOLTRON', f"    {message}: !{self._channel_point_data['attachments'][reward_id]['message_command'][message]}")
+				self.print(f"    {message}: !{self._channel_point_data['attachments'][reward_id]['message_command'][message]}")
 
 	def _delete_reward(self, input, command):
 		if not self._channel_point_data['attachments']:
-			self.buffer_print('VOLTRON', 'No channel point redemptions configured')
+			self.print('No channel point redemptions configured')
 			return
 
 		b = get_broadcaster()
@@ -160,7 +160,7 @@ class ChannelPointModule(ModuleBase):
 
 		reward_map = {x['id']:x['title'] for x in rewards}
 
-		self.buffer_print('VOLTRON', 'Select reward to delete:')
+		self.print('Select reward to delete:')
 		selection_map = {}
 		count = 1
 		for reward_id in self._channel_point_data['attachments']:
@@ -169,9 +169,9 @@ class ChannelPointModule(ModuleBase):
 			else:
 				command_name = 'Not Set'
 			command = self._channel_point_data['attachments'][reward_id].get('command')
-			self.buffer_print('VOLTRON', f"{count}. {reward_map.get(reward_id, '<deleted>')} - {command_name}")
+			self.print(f"{count}. {reward_map.get(reward_id, '<deleted>')} - {command_name}")
 			for message in self._channel_point_data['attachments'][reward_id].get('message_command', {}):
-				self.buffer_print('VOLTRON', f"    {message}: !{self._channel_point_data['attachments'][reward_id]['message_command'][message]}")
+				self.print(f"    {message}: !{self._channel_point_data['attachments'][reward_id]['message_command'][message]}")
 
 			selection_map[count] = reward_id
 			count += 1
@@ -187,7 +187,7 @@ class ChannelPointModule(ModuleBase):
 			selection = int(input)
 			reward_id = selection_map.get(selection)
 			if not reward_id:
-				self.buffer_print('VOLTRON', f'Invalid Selection: {input}')
+				self.print(f'Invalid Selection: {input}')
 				return False
 
 			def select_message(input):
@@ -196,7 +196,7 @@ class ChannelPointModule(ModuleBase):
 				else:
 					selected_message = input
 					if not selected_message in self._channel_point_data['attachments'][reward_id].get('message_command', {}):
-						self.buffer_print('VOLTRON', f'No message set: {selected_message}')
+						self.print(f'No message set: {selected_message}')
 						return False
 
 				def confirm(input):
@@ -208,12 +208,12 @@ class ChannelPointModule(ModuleBase):
 						if selected_message:
 							del self._channel_point_data['attachments'][reward_id]['message_command'][selected_message]
 							self.save_module_data(self._channel_point_data)
-							self.buffer_print('VOLTRON', f"{reward_map.get(reward_id, '<deleted>')} successfully deleted for message {selected_message}")
+							self.print(f"{reward_map.get(reward_id, '<deleted>')} successfully deleted for message {selected_message}")
 							self.update_status_text()
 						else:
 							self._channel_point_data['attachments'][reward_id]['command'] = None
 							self.save_module_data(self._channel_point_data)
-							self.buffer_print('VOLTRON', f"{reward_map.get(reward_id, '<deleted>')} successfully deleted")
+							self.print(f"{reward_map.get(reward_id, '<deleted>')} successfully deleted")
 							self.update_status_text()
 
 						if not self._channel_point_data['attachments'][reward_id].get('command') and not self._channel_point_data['attachments'][reward_id].get('message_command'):

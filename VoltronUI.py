@@ -12,7 +12,7 @@ from prompt_toolkit.completion import NestedCompleter, Completer, Completion
 from prompt_toolkit.key_binding.bindings.scroll import scroll_one_line_up, scroll_one_line_down
 from prompt_toolkit.application import get_app
 
-from pygments.lexer import RegexLexer
+from pygments.lexer import RegexLexer, bygroups
 from pygments import token
 
 import threading
@@ -39,7 +39,7 @@ class UIBufferQueue(threading.Thread):
 
 		self.keep_listening = True
 
-		self.log_levels = ['VOLTRON', 'CRIT', 'ERR', 'WARN', 'STATUS', 'INFO', 'DEBUG']
+		self.log_levels = ['VOLTRON', 'MODULE', 'CRIT', 'ERR', 'WARN', 'STATUS', 'INFO', 'DEBUG']
 
 	def run(self):
 		while self.keep_listening:
@@ -67,16 +67,26 @@ class UIBufferQueue(threading.Thread):
 			input (tuple): First element is the message type, second is the text to output
 		"""
 		timestamp = time.strftime("%H:%M", time.localtime())
-		output_str = str(input[1])
-		new = output_str.replace('\n', '\n[{ts}] <{tag}> '.format(
+		extra = ""
+		if input[0] == 'MODULE' and len(input) > 2:
+			output_str = str(input[2])
+			extra = "<MODULE> "
+			tag = str(input[1]).upper()
+		else:
+			output_str = str(input[1])
+			tag = str(input[0])
+
+		new = output_str.replace('\n', '\n[{ts}] {extra}<{tag}> '.format(
 			ts = timestamp,
-			tag = input[0]
+			extra = extra,
+			tag = tag
 		))
 		## Add formated text to buffer and scroll to bottom
-		text = "{existing}\n[{ts}] <{type}> {new}".format(
+		text = "{existing}\n[{ts}] {extra}<{type}> {new}".format(
 			existing = self.scrolling_output.text,
 			ts = timestamp,
-			type = input[0],
+			extra = extra,
+			type = tag,
 			new = new
 		)
 		#pos = None
@@ -100,11 +110,24 @@ class VoltronOutputLexer(RegexLexer):
 
 	tokens = {
 		'root': [
+			(r'\<MODULE\>\s(\<WELCOME\>\s)(First message:\s)([^ ]+)(\s\(Not Following\))', bygroups(
+				token.Name.Variable,
+				token.Text,
+				token.Name.Decorator,
+				token.Name.Exception
+			)),
+			(r'\<MODULE\>\s(\<WELCOME\>\s)(First message:\s)([^ ]+)', bygroups(
+				token.Name.Variable,
+				token.Text,
+				token.Name.Decorator
+			)),
+			(r'\<MODULE\>\s(\<.+\>)', bygroups(token.Name.Variable)),
 			(r'^\[.*\]', token.Name.Attribute),
 			(r'\<VOLTRON\>', token.Name.Variable),
 			(r'<INFO\>.*$', token.Name.Attribute),
 			(r'<STATUS>.*$', token.Name.Label),
-			(r'<ERR>.*$', token.Name.Exception)
+			(r'<ERR>.*$', token.Name.Exception),
+
 		]
 	}
 

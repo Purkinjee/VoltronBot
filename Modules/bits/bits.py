@@ -27,7 +27,7 @@ class BitsModule(ModuleBase):
 			message = f"{event.display_name} just cheered {event.bits_used} bits!"
 
 		if message is not None:
-			self.buffer_print('VOLTRON', message)
+			self.print(message)
 
 		command = self._module_data['attachments'].get('cheer')
 		if not command:
@@ -50,23 +50,23 @@ class BitsModule(ModuleBase):
 	def _attach_bits(self, input, command):
 		if input.lower().strip() == 'none':
 			self._module_data['attachments']['cheer'] = None
-			self.buffer_print('VOLTRON', 'Attachment removed')
+			self.print('Attachment removed')
 			return
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			current = self._module_data['attachments'].get('cheer')
 			if current:
-				self.buffer_print('VOLTRON', f'Currently set to !{current}')
+				self.print(f'Currently set to !{current}')
 			else:
-				self.buffer_print('VOLTRON', 'Not currently set')
+				self.print('Not currently set')
 			return
 
 		command = match.group(1).lower()
 
 		self._module_data['attachments']['cheer'] = command
 		self.save_module_data(self._module_data)
-		self.buffer_print('VOLTRON', f'Bits now attached to !{command}')
+		self.print(f'Bits now attached to !{command}')
 
 	def shutdown(self):
 		self.save_module_data(self._module_data)

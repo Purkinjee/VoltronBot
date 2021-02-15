@@ -87,6 +87,9 @@ class ModuleBase:
 	def buffer_print(self, type, msg):
 		self.voltron.buffer_queue.put((type, msg))
 
+	def print(self, msg):
+		self.voltron.buffer_queue.put(('MODULE', self.module_name, msg))
+
 	def get_counter(self, counter_name):
 		return self.voltron.get_counter(counter_name)
 
@@ -128,7 +131,7 @@ class ModuleBase:
 				return False
 
 			if selection < 0 or selection > len(account_list):
-				self.buffer_print('VOLTRON', 'Invalid selection')
+				self.print('Invalid selection')
 				return False
 
 			selected_user = User(account_list[selection-1])
@@ -144,7 +147,7 @@ class ModuleBase:
 	def list_accounts(self, input=None, command=None):
 		users = get_all_acccounts()
 		count = 1
-		self.buffer_print('VOLTRON', '')
+		self.print('')
 		account_list = []
 		for user in users:
 			output_str = '{num}. {display} default={default} broadcaster={broadcaster}'.format(
@@ -155,9 +158,9 @@ class ModuleBase:
 				broadcaster = user.is_broadcaster
 			)
 			account_list.append(user.id)
-			self.buffer_print('VOLTRON', output_str)
+			self.print(output_str)
 			count += 1
-		self.buffer_print('VOLTRON', '')
+		self.print('')
 		return account_list
 
 	@property

@@ -59,7 +59,7 @@ class PermissionModule(ModuleBase):
 	def _set_permission(self, input, command):
 		match = re.search(r'^!([^ ]+) (all|vip|mod|broadcaster)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -71,39 +71,39 @@ class PermissionModule(ModuleBase):
 		self._permission_data['commands'][command] = command_permission
 		self.save_module_data(self._permission_data)
 
-		self.buffer_print('VOLTRON', f'Permission for !{command} set to {permission}')
+		self.print(f'Permission for !{command} set to {permission}')
 
 	def _delete_permission(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
 		if not command in self._permission_data['commands']:
-			self.buffer_print('VOLTRON', f'Permission for !{command} does not exist')
+			self.print(f'Permission for !{command} does not exist')
 			return
 
 		del self._permission_data['commands'][command]
 		self.save_module_data(self._permission_data)
-		self.buffer_print('VOLTRON', f'Permission for !{command} deleted')
+		self.print(f'Permission for !{command} deleted')
 
 	def _list_permissions(self, input, command):
-		self.buffer_print('VOLTRON', 'All permissions:')
+		self.print('All permissions:')
 		for command in self._permission_data['commands']:
 			basic_permission = self._permission_data['commands'][command].get('basic', 'default')
-			self.buffer_print('VOLTRON', f'  !{command}: {basic_permission}')
-		self.buffer_print('VOLTRON', f'Default permission: {self.default_permission}')
+			self.print(f'  !{command}: {basic_permission}')
+		self.print(f'Default permission: {self.default_permission}')
 
 	def _set_default_permission(self, input, command):
 		if not input in ('all', 'vip', 'mod', 'broadcaster'):
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Default permission: {self.default_permission}')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Default permission: {self.default_permission}')
 			return
 
 		self._permission_data['default'] = input
 		self.save_module_data(self._permission_data)
-		self.buffer_print('VOLTRON', f'Default permission set to {input}')
+		self.print(f'Default permission set to {input}')
 
 
 	def shutdown(self):

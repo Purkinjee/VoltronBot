@@ -75,8 +75,8 @@ class Account(ModuleBase):
 		))
 
 	def add_account(self, input, command):
-		self.buffer_print('VOLTRON', 'Authorizing new account...')
-		self.buffer_print('VOLTRON', 'Type C to cancel')
+		self.print('Authorizing new account...')
+		self.print('Type C to cancel')
 		self.update_status_text('Awaiting auth...')
 		self.prompt_ident = self.get_prompt('c to cancel>> ', self.input_recv)
 		self.login_thread = GetTwitchLogin(self, self.login_thread_queue)
@@ -85,8 +85,8 @@ class Account(ModuleBase):
 	def refresh_accounts(self, input, command):
 		for account in self.voltron.users:
 			account.update()
-			self.buffer_print('VOLTRON', f'{account.display_name} updated')
-		self.buffer_print('VOLTRON', 'Update Complete!')
+			self.print(f'{account.display_name} updated')
+		self.print('Update Complete!')
 
 	def set_default(self, input, command):
 		## This will list all accounts, allow the user to select
@@ -103,7 +103,7 @@ class Account(ModuleBase):
 				return False
 
 			if selection < 0 or selection > len(account_list):
-				self.buffer_print('VOLTRON', 'Invalid selection')
+				self.print('Invalid selection')
 				return False
 
 			selected_user = User(account_list[selection-1])
@@ -117,7 +117,7 @@ class Account(ModuleBase):
 					return False
 
 				selected_user.make_default()
-				self.buffer_print('VOLTRON', f'{selected_user.display_name} is now the default account, restarting.')
+				self.print(f'{selected_user.display_name} is now the default account, restarting.')
 				self.update_status_text()
 				self.voltron.reset()
 				self.voltron.start()
@@ -145,7 +145,7 @@ class Account(ModuleBase):
 				return False
 
 			if selection < 0 or selection > len(account_list):
-				self.buffer_print('VOLTRON', 'Invalid selection')
+				self.print('Invalid selection')
 				return False
 
 			selected_user = User(account_list[selection-1])
@@ -159,7 +159,7 @@ class Account(ModuleBase):
 					return False
 
 				selected_user.make_broadcaster()
-				self.buffer_print('VOLTRON', f'{selected_user.display_name} is now the broadcaster, restarting.')
+				self.print(f'{selected_user.display_name} is now the broadcaster, restarting.')
 				self.update_status_text()
 				self.voltron.reset()
 				self.voltron.start()
@@ -185,7 +185,7 @@ class Account(ModuleBase):
 				return False
 
 			if selection < 0 or selection > len(account_list):
-				self.buffer_print('VOLTRON', 'Invalid selection')
+				self.print('Invalid selection')
 				return False
 
 			selected_user = User(account_list[selection-1])
@@ -199,7 +199,7 @@ class Account(ModuleBase):
 					return False
 
 				selected_user.delete()
-				self.buffer_print('VOLTRON', f'{selected_user.display_name} deleted, restarting.')
+				self.print(f'{selected_user.display_name} deleted, restarting.')
 				self.update_status_text()
 				self.voltron.reset()
 				self.voltron.start()
@@ -219,13 +219,13 @@ class Account(ModuleBase):
 		if self.prompt_ident:
 			self.terminate_prompt(self.prompt_ident)
 		if not login_info:
-			self.buffer_print('VOLTRON', 'Authorization failed')
+			self.print('Authorization failed')
 			return
 
 		def save(prompt):
 			action = prompt.lower().strip()
 			if action == 'c':
-				self.buffer_print('VOLTRON', 'No account added')
+				self.print('No account added')
 				return True
 			elif action == 'y':
 				is_broadcaster = True
@@ -248,7 +248,7 @@ class Account(ModuleBase):
 					is_broadcaster # is broadcaster
 				)
 
-				self.buffer_print('VOLTRON', 'Authorization successful for {user} (broadcaster={broadcaster})'.format(
+				self.print('Authorization successful for {user} (broadcaster={broadcaster})'.format(
 					user=account.display_name,
 					broadcaster = is_broadcaster
 				))

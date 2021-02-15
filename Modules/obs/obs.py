@@ -320,7 +320,7 @@ class OBS(ModuleBase):
 	def _hide_show_timed_source(self, action, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -332,7 +332,7 @@ class OBS(ModuleBase):
 			scene = None
 
 		if command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command already exists: !{command}')
+			self.print(f'Command already exists: !{command}')
 			return
 
 		self._obs_data['commands'][command] = {
@@ -343,7 +343,7 @@ class OBS(ModuleBase):
 		}
 
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', f'Command !{command} successfully added')
+		self.print(f'Command !{command} successfully added')
 
 	def _add_timed_filter(self, input, command):
 		self._add_hide_timed_filter('timedfilter', input, command)
@@ -354,7 +354,7 @@ class OBS(ModuleBase):
 	def _add_hide_timed_filter(self, action, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -363,7 +363,7 @@ class OBS(ModuleBase):
 		seconds = int(match.group(4))
 
 		if command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command already exists: !{command}')
+			self.print(f'Command already exists: !{command}')
 			return
 
 		self._obs_data['commands'][command] = {
@@ -374,13 +374,13 @@ class OBS(ModuleBase):
 		}
 
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', f'Command !{command} successfully added')
+		self.print(f'Command !{command} successfully added')
 
 
 	def _add_scene_change(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ?(.+)?$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -388,7 +388,7 @@ class OBS(ModuleBase):
 		from_scene = match.group(3)
 
 		if command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command already exists: !{command}')
+			self.print(f'Command already exists: !{command}')
 			return
 
 		self._obs_data['commands'][command] = {
@@ -399,53 +399,53 @@ class OBS(ModuleBase):
 			self._obs_data['commands'][command]['source_scenes'] = from_scene
 
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', f'Command !{command} successfully added')
+		self.print(f'Command !{command} successfully added')
 
 	def _delete_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
 		if command not in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
+			self.print(f'Command !{command} does not exist')
 			return
 
 		del self._obs_data['commands'][command]
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', f'Command !{command} successfully deleted')
+		self.print(f'Command !{command} successfully deleted')
 
 	def _set_host(self, input, command):
 		match = re.search('^([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current host: {self.host}')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Current host: {self.host}')
 			return
 
 		new_host = match.group(1)
 		self._obs_data['host'] = new_host
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', f'Host set to: {self.host}')
+		self.print(f'Host set to: {self.host}')
 		self.restart_obs_thread()
 
 	def _set_port(self, input, command):
 		match = re.search('^(\d+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current port: {self.port}')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Current port: {self.port}')
 			return
 
 		new_port = int(match.group(1))
 		self._obs_data['port'] = new_port
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', f'Port set to: {self.port}')
+		self.print(f'Port set to: {self.port}')
 		self.restart_obs_thread()
 
 	def _set_password(self, input, command):
 		match = re.search('^([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		new_pw = match.group(1)
@@ -453,39 +453,39 @@ class OBS(ModuleBase):
 			new_pw = None
 		self._obs_data['password'] = new_pw
 		self.save_module_data(self._obs_data)
-		self.buffer_print('VOLTRON', 'Password updated')
+		self.print('Password updated')
 		self.restart_obs_thread()
 
 	def _list_obs_commands(self, input, command):
-		self.buffer_print('VOLTRON', '')
-		self.buffer_print('VOLTRON', f'Available commands in {self.module_name} module:')
+		self.print('')
+		self.print(f'Available commands in {self.module_name} module:')
 		for command in sorted(self._obs_data['commands']):
 			output_str = "  !{command}".format(
 				command = command
 			)
 
-			self.buffer_print('VOLTRON', output_str)
-		self.buffer_print('VOLTRON', '')
+			self.print(output_str)
+		self.print('')
 
 	def _command_details(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
 		if not command in self._obs_data['commands']:
-			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
+			self.print(f'Unknown command: !{command}')
 			return
 
-		self.buffer_print('VOLTRON', f'Details for command !{command}:')
+		self.print(f'Details for command !{command}:')
 
 		for key in self._obs_data['commands'][command]:
 			if key in ('mod_only', 'broadcaster_only', 'user_cooldown', 'global_cooldown', 'runtime'):
 				continue
 
-			self.buffer_print('VOLTRON', f"  {key}: {self._obs_data['commands'][command][key]}")
+			self.print(f"  {key}: {self._obs_data['commands'][command][key]}")
 
 	def restart_obs_thread(self):
 		if self.obs_thread:

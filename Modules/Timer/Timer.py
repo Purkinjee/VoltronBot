@@ -87,20 +87,20 @@ class Timer(ModuleBase):
 
 	def _list_timers(self, input, command):
 		if not self._timer_data['timers']:
-			self.buffer_print('VOLTRON', 'No timers set')
+			self.print('No timers set')
 			return
 
 		for timer in self._timer_data['timers']:
 			expire_time = time.localtime(timer[0])
 			expire_time_str = time.strftime("%Y-%m-%d %H:%M", expire_time)
-			self.buffer_print('VOLTRON', f"{expire_time_str}: {timer[1]}")
+			self.print(f"{expire_time_str}: {timer[1]}")
 
 	def _clear_timers(self, input, command):
 		def confirm(prompt):
 			if prompt.lower() == 'y':
 				self._timer_data['timers'] = []
 				self.save_module_data(self._timer_data)
-				self.buffer_print('VOLTRON', 'Timers cleared.')
+				self.print('Timers cleared.')
 				self.update_status_text()
 				return True
 			if prompt.lower() == 'n':

@@ -66,24 +66,24 @@ class ShoutOut(ModuleBase):
 			self._shoutout_data['command'] = command
 			self.save_module_data(self._shoutout_data)
 
-			self.buffer_print('VOLTRON', f"Shoutout command changed to !{command}")
+			self.print(f"Shoutout command changed to !{command}")
 
 		else:
-			self.buffer_print('VOLTRON', f'Current command: !{self.so_command}')
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Current command: !{self.so_command}')
+			self.print(f'Usage: {command.usage}')
 
 	def set_message(self, input, command):
 		if not input:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', 'Available variables: {streamer}, {game}, {url}')
-			self.buffer_print('VOLTRON', f'Current message: {self.so_str}')
+			self.print(f'Usage: {command.usage}')
+			self.print('Available variables: {streamer}, {game}, {url}')
+			self.print(f'Current message: {self.so_str}')
 			return
 
 		self._shoutout_data['message'] = input
 		self.save_module_data(self._shoutout_data)
 
-		self.buffer_print('VOLTRON', 'Shoutout message updated:')
-		self.buffer_print('VOLTRON', self.so_str)
+		self.print('Shoutout message updated:')
+		self.print(self.so_str)
 
 	def set_response_account(self, input, command):
 		def account_selected(account):

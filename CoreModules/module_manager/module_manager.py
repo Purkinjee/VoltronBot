@@ -22,7 +22,7 @@ class ModuleManager(ModuleBase):
 	def toggle_module(self, input, command):
 		match = re.search(r'^([^ ]+)$', input.strip())
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		module_name = match.group(1)
@@ -34,7 +34,7 @@ class ModuleManager(ModuleBase):
 		res = cur.fetchone()
 
 		if not res:
-			self.buffer_print('VOLTRON', f'Module not found: {module_name}')
+			self.print(f'Module not found: {module_name}')
 			con.commit()
 			con.close()
 			return
@@ -44,7 +44,7 @@ class ModuleManager(ModuleBase):
 		cur.execute(sql, (enabled, res['id']))
 
 		enabled_str = 'enabled' if enabled else 'disabled'
-		self.buffer_print('VOLTRON', f'Module {module_name} has been {enabled_str}')
+		self.print(f'Module {module_name} has been {enabled_str}')
 		self.buffer_print('STATUS', 'Modules changed. Restart VoltronBot for changes to take effect.')
 
 		con.commit()
@@ -58,16 +58,16 @@ class ModuleManager(ModuleBase):
 		cur.execute(sql)
 		res = cur.fetchall()
 
-		self.buffer_print('VOLTRON', '')
-		self.buffer_print('VOLTRON', 'Available Modules:')
+		self.print('')
+		self.print('Available Modules:')
 
 		for r in res:
 			mod_str = '  ' + r['module_name']
 			if not r['enabled']:
 				mod_str += ' (DISABLED)'
-			self.buffer_print('VOLTRON', mod_str)
+			self.print(mod_str)
 
-		self.buffer_print('VOLTRON', '')
+		self.print('')
 
 		con.commit()
 		con.close()

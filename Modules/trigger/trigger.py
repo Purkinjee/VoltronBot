@@ -73,26 +73,26 @@ class Trigger(ModuleBase):
 			self._static_commands[event.command](event)
 
 	def _list_triggers(self, input, command):
-		self.buffer_print('VOLTRON', 'All tiggers:')
+		self.print('All tiggers:')
 		for trigger in self._triggers['triggers']:
-			self.buffer_print('VOLTRON', f'  {trigger}')
+			self.print(f'  {trigger}')
 
 	def _set_trigger_account(self, input, command):
 		match = re.search('^([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		word = match.group(1).lower().strip()
 		if not word in self._triggers['triggers']:
-			self.buffer_print('VOLTRON', f'No trigger configured for {word}')
+			self.print(f'No trigger configured for {word}')
 			return
 
 
 		def account_selected(account):
 			self._triggers['triggers'][word]['account'] = account.twitch_user_id
 			self.save_module_data(self._triggers)
-			self.buffer_print('VOLTRON', f"Response account for '{word}' set to {account.display_name}")
+			self.print(f"Response account for '{word}' set to {account.display_name}")
 
 
 		self.select_account(account_selected)

@@ -107,19 +107,19 @@ class CooldownModule(ModuleBase):
 
 	def _set_default_cooldown(self, input, command):
 		if not input.isdigit():
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current default: {self.default_cooldown}s')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Current default: {self.default_cooldown}s')
 			return
 
 		default_cd = int(input)
 		self._cooldown_data['default_cooldown'] = default_cd
 		self.save_module_data(self._cooldown_data)
-		self.buffer_print('VOLTRON', f'Default cooldown set to {default_cd}s')
+		self.print(f'Default cooldown set to {default_cd}s')
 
 	def _set_cooldown(self, input, command):
 		match = re.search(r'^!([^ ]+) (\d+) (\d+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -134,13 +134,13 @@ class CooldownModule(ModuleBase):
 
 		self.save_module_data(self._cooldown_data)
 
-		self.buffer_print('VOLTRON', f'Cooldown set for !{command}')
-		self.buffer_print('VOLTRON', f'  Global: {global_cd}s')
-		self.buffer_print('VOLTRON', f'  User: {user_cd}s')
+		self.print(f'Cooldown set for !{command}')
+		self.print(f'  Global: {global_cd}s')
+		self.print(f'  User: {user_cd}s')
 
 	def _set_notifications(self, input, command):
 		if not input.strip().lower() in ('on', 'off'):
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		enabled = input.strip().lower() == 'on'
@@ -148,18 +148,18 @@ class CooldownModule(ModuleBase):
 		self._cooldown_data['notifications'] = enabled
 		self.save_module_data(self._cooldown_data)
 
-		self.buffer_print('VOLTRON', f'Cooldown notifications turned {input.strip().lower()}')
+		self.print(f'Cooldown notifications turned {input.strip().lower()}')
 
 	def _delete_cooldown(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
 
 		if not command in self._cooldown_data['commands']:
-			self.buffer_print('VOLTRON', f'Cooldowns for command !{command} not set')
+			self.print(f'Cooldowns for command !{command} not set')
 			return
 
 		del self._cooldown_data['commands'][command]
@@ -169,14 +169,14 @@ class CooldownModule(ModuleBase):
 
 		self.save_module_data(self._cooldown_data)
 
-		self.buffer_print('VOLTRON', f'Cooldowns for command !{command} successfully removed.')
+		self.print(f'Cooldowns for command !{command} successfully removed.')
 
 	def _list_cooldowns(self, input, command):
 		for command in self._cooldown_data['commands']:
 			command_data = self._cooldown_data['commands'][command]
-			self.buffer_print('VOLTRON', f'!{command}:')
-			self.buffer_print('VOLTRON', f"  Global: {command_data['global']}s")
-			self.buffer_print('VOLTRON', f"  User: {command_data['user']}s")
+			self.print(f'!{command}:')
+			self.print(f"  Global: {command_data['global']}s")
+			self.print(f"  User: {command_data['user']}s")
 
 	def remove_expired_cooldowns(self):
 		for command in self._cooldown_data['commands']:

@@ -29,7 +29,7 @@ class RaidHost(ModuleBase):
 
 	def raid(self, event):
 		message = f"Just raided by {event.display_name} with {event.viewer_count} viewers!"
-		self.buffer_print('VOLTRON', message)
+		self.print(message)
 
 		command_str = self._module_data['attachments'].get('raid')
 		if command_str is not None:
@@ -48,7 +48,7 @@ class RaidHost(ModuleBase):
 
 	def host(self, event):
 		message = f"Just hosted by {event.display_name}!"
-		self.buffer_print('VOLTRON', message)
+		self.print(message)
 
 		command_str = self._module_data['attachments'].get('host')
 		if command_str is not None:
@@ -73,23 +73,23 @@ class RaidHost(ModuleBase):
 	def _attach(self, key, input, command):
 		if input.lower().strip() == 'none':
 			self._module_data['attachments'][key] = None
-			self.buffer_print('VOLTRON', 'Attachment removed')
+			self.print('Attachment removed')
 			return
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			current = self._module_data['attachments'].get(key)
 			if current:
-				self.buffer_print('VOLTRON', f'Currently set to !{current}')
+				self.print(f'Currently set to !{current}')
 			else:
-				self.buffer_print('VOLTRON', 'Not currently set')
+				self.print('Not currently set')
 			return
 
 		command = match.group(1).lower()
 
 		self._module_data['attachments'][key] = command
 		self.save_module_data(self._module_data)
-		self.buffer_print('VOLTRON', f'{key.capitalize()}s now attached to !{command}')
+		self.print(f'{key.capitalize()}s now attached to !{command}')
 
 	def shutdown(self):
 		self.save_module_data(self._module_data)

@@ -71,7 +71,7 @@ class Rotator(ModuleBase):
 
 	def add_message(self, input, command):
 		if not input:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		if not 'messages' in self._rotator_data:
@@ -80,19 +80,19 @@ class Rotator(ModuleBase):
 		self._rotator_data['messages'].append(input)
 		self.save_module_data(self._rotator_data)
 
-		self.buffer_print('VOLTRON', f"Rotator message added: {input}")
+		self.print(f"Rotator message added: {input}")
 
 	def list_messages(self, input=None, command=None):
 		messages = self._rotator_data.get('messages', [])
 
 		if not messages:
-			self.buffer_print('VOLTRON', 'No rotator messages set')
+			self.print('No rotator messages set')
 			return
 
-		self.buffer_print('VOLTRON', 'Rotator messages:')
+		self.print('Rotator messages:')
 		counter = 1
 		for message in messages:
-			self.buffer_print('VOLTRON', f'  {counter}. {message}')
+			self.print(f'  {counter}. {message}')
 			counter += 1
 
 		return messages
@@ -111,7 +111,7 @@ class Rotator(ModuleBase):
 			selection = int(prompt)
 
 			if selection < 0 or selection > len(message_list):
-				self.buffer_print('VOLTRON', 'Invalid selection')
+				self.print('Invalid selection')
 				return False
 
 			selected_message = message_list[selection-1]
@@ -126,12 +126,12 @@ class Rotator(ModuleBase):
 
 				self._rotator_data['messages'].remove(selected_message)
 				self.save_module_data(self._rotator_data)
-				self.buffer_print('VOLTRON', 'Message deleted.')
+				self.print('Message deleted.')
 				self.update_status_text()
 				return True
 
-			self.buffer_print('VOLTRON', 'Selected Message:')
-			self.buffer_print('VOLTRON', selected_message)
+			self.print('Selected Message:')
+			self.print(selected_message)
 			self.update_status_text('Delete message?')
 			self.terminate_prompt(self.prompt_ident)
 			self.prompt_ident = self.get_prompt('[Y]es/[N]o> ', confirm)
@@ -141,27 +141,27 @@ class Rotator(ModuleBase):
 
 	def set_time_threshold(self, input, command):
 		if not input.isdigit():
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current time: {int(self.time_threshold/60)}m')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Current time: {int(self.time_threshold/60)}m')
 			return
 
 		new_time = int(input)
 
 		self._rotator_data['time_threshold'] = new_time * 60
 		self.save_module_data(self._rotator_data)
-		self.buffer_print('VOLTRON', f'Time interval set to {new_time} minutes')
+		self.print(f'Time interval set to {new_time} minutes')
 
 	def set_message_threshold(self, input, command):
 		if not input.isdigit():
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
-			self.buffer_print('VOLTRON', f'Current message count: {self.message_threshold}')
+			self.print(f'Usage: {command.usage}')
+			self.print(f'Current message count: {self.message_threshold}')
 			return
 
 		new_threshold = int(input)
 
 		self._rotator_data['message_threshold'] = new_threshold
 		self.save_module_data(self._rotator_data)
-		self.buffer_print('VOLTRON', f'Message count set to {new_threshold}')
+		self.print(f'Message count set to {new_threshold}')
 
 	def shutdown(self):
 		self.save_module_data(self._rotator_data)

@@ -97,9 +97,9 @@ class SoundCommand(ModuleBase):
 					device = sounddevice.query_devices()[device_id]
 					if device['max_output_channels'] > 0:
 						valid_devices.append(device)
-						self.buffer_print('VOLTRON', f"{len(valid_devices)}. {device['name']}")
+						self.print(f"{len(valid_devices)}. {device['name']}")
 
-		self.buffer_print('VOLTRON', f'Current audio device: {self.audio_device}')
+		self.print(f'Current audio device: {self.audio_device}')
 
 		def save(prompt):
 			if prompt.strip() == 'c':
@@ -108,7 +108,7 @@ class SoundCommand(ModuleBase):
 			if prompt.strip() == '-1':
 				self._commands['audio_device'] = None
 				self.save_module_data(self._commands)
-				self.buffer_print('VOLTRON', 'Default audio device selected.')
+				self.print('Default audio device selected.')
 				self.update_status_text()
 				return True
 
@@ -117,7 +117,7 @@ class SoundCommand(ModuleBase):
 
 			device_id = int(prompt)
 			if len(valid_devices) < device_id or device_id < 1:
-				self.buffer_print('VOLTRON', 'Invalid Selection')
+				self.print('Invalid Selection')
 				return False
 
 			device = valid_devices[device_id - 1]
@@ -127,7 +127,7 @@ class SoundCommand(ModuleBase):
 			self._commands['audio_device'] = device_name
 			self.save_module_data(self._commands)
 			self.update_status_text()
-			self.buffer_print('VOLTRON', f"Audio device set to {device['name']}")
+			self.print(f"Audio device set to {device['name']}")
 			return True
 
 		self.update_status_text('Select Audio Device. c to cancel. -1 to reset to default.')
@@ -136,24 +136,24 @@ class SoundCommand(ModuleBase):
 	def _set_volume(self, input, command):
 		match = re.search(r'^!([^ ]+) (\d+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1).lower()
 		volume = int(match.group(2))
 
 		if not command in self._commands['commands']:
-			self.buffer_print('VOLTRON', f'Command not found: !{command}')
+			self.print(f'Command not found: !{command}')
 			return
 
 		self._commands['commands'][command]['volume'] = volume
 		self.save_module_data(self._commands)
-		self.buffer_print('VOLTRON', f"Volume for !{command} set to {volume}%")
+		self.print(f"Volume for !{command} set to {volume}%")
 
 	def _add_command(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+)', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
@@ -165,11 +165,11 @@ class SoundCommand(ModuleBase):
 			self._commands['commands'][command] = { 'sound_file': sound_file }
 
 		self.save_module_data(self._commands)
-		self.buffer_print('VOLTRON', f'Sound Command !{command} successfully added!')
+		self.print(f'Sound Command !{command} successfully added!')
 
 	def _list_commands(self, input, command):
-		self.buffer_print('VOLTRON', '')
-		self.buffer_print('VOLTRON', 'Sound Commands:')
+		self.print('')
+		self.print('Sound Commands:')
 
 		count = 1
 		command_list = []
@@ -177,49 +177,49 @@ class SoundCommand(ModuleBase):
 			command_list.append(command)
 			media_file = self._commands['commands'][command]['sound_file']
 			volume = self._commands['commands'][command].get('volume', 100)
-			self.buffer_print('VOLTRON', f"!{command}")
-			self.buffer_print('VOLTRON', f'  File: {media_file}')
-			self.buffer_print('VOLTRON', f'  Volume: {volume}%')
+			self.print(f"!{command}")
+			self.print(f'  File: {media_file}')
+			self.print(f'  Volume: {volume}%')
 
-		self.buffer_print('VOLTRON', '')
+		self.print('')
 
 		return command_list
 
 	def _command_details(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {self.module_name} details !<command>')
+			self.print(f'Usage: {self.module_name} details !<command>')
 			return
 
 		command = match.group(1)
 		if not command in self._commands['commands']:
-			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
+			self.print(f'Unknown command: !{command}')
 			return
 
 		media_file = self._commands['commands'][command]['sound_file']
 
-		self.buffer_print('VOLTRON', f'Details for !{command}:')
-		self.buffer_print('VOLTRON', f'  File: {media_file}')
+		self.print(f'Details for !{command}:')
+		self.print(f'  File: {media_file}')
 
 
 	def _delete_command(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input.strip())
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		selected_command = match.group(1)
 		if not selected_command in self._commands['commands'].keys():
-			self.buffer_print('VOLTRON', f'Unkown command !{selected_command}')
+			self.print(f'Unkown command !{selected_command}')
 			return
 
 		del self._commands['commands'][selected_command]
 		self.save_module_data(self._commands)
-		self.buffer_print('VOLTRON', f'Command !{selected_command} deleted')
+		self.print(f'Command !{selected_command} deleted')
 
 	def _show_directory(self, input, command):
-		self.buffer_print('VOLTRON', 'Media Directory:')
-		self.buffer_print('VOLTRON', self.media_directory)
+		self.print('Media Directory:')
+		self.print(self.media_directory)
 
 	@property
 	def media_directory(self):

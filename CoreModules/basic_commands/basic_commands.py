@@ -121,19 +121,19 @@ class BasicCommands(ModuleBase):
 	def _add_command_admin(self, input, command):
 		match = re.search(r'^!([^ ]+) (.*)', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		new_command = match.group(1)
 		response = match.group(2).strip()
 		if new_command in self._commands:
-			self.buffer_print('VOLTRON', f'The command !{new_command} already exists')
+			self.print(f'The command !{new_command} already exists')
 			return
 		else:
 			self._commands[new_command] = { 'response': [response] }
 
 		self.save_module_data(self._commands)
-		self.buffer_print('VOLTRON', f'Command !{new_command} successfully added!')
+		self.print(f'Command !{new_command} successfully added!')
 
 	def _append_command(self, event):
 		if not event.is_mod:
@@ -156,19 +156,19 @@ class BasicCommands(ModuleBase):
 	def _append_command_admin(self, input, command):
 		match = re.search(r'^!([^ ]+) (.*)', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		new_command = match.group(1)
 		response = match.group(2).strip()
 
 		if not new_command in self._commands:
-			self.buffer_print('VOLTRON', f'Command !{new_command} not found')
+			self.print(f'Command !{new_command} not found')
 			return
 
 		self._commands[new_command]['response'].append(response)
 		self.save_module_data(self._commands)
-		self.buffer_print('VOLTRON', f'Command !{new_command} successfully modified')
+		self.print(f'Command !{new_command} successfully modified')
 
 
 	def _delete_command(self, event):
@@ -192,28 +192,28 @@ class BasicCommands(ModuleBase):
 	def _delete_command_admin(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		new_command = match.group(1)
 		if not new_command in  self._commands.keys():
-			self.buffer_print('VOLTRON', f'Command !{new_command} not found')
+			self.print(f'Command !{new_command} not found')
 			return
 
 		del self._commands[new_command]
 		self.save_module_data(self._commands)
-		self.buffer_print('VOLTRON', f'Command !{new_command} successfully deleted!')
+		self.print(f'Command !{new_command} successfully deleted!')
 
 
 	def command_account(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
 		if not command in self._commands:
-			self.buffer_print('VOLTRON', f'Command !{command} does not exist')
+			self.print(f'Command !{command} does not exist')
 			return
 
 		def account_selected(account):
@@ -223,22 +223,22 @@ class BasicCommands(ModuleBase):
 		self.select_account(account_selected)
 
 	def list_commands(self, input, command):
-		self.buffer_print('VOLTRON', '')
-		self.buffer_print('VOLTRON', f'Available commands in {self.module_name} module:')
+		self.print('')
+		self.print(f'Available commands in {self.module_name} module:')
 		self._print_commands()
-		self.buffer_print('VOLTRON', '')
+		self.print('')
 
 	def list_counters(self, input, command):
-		self.buffer_print('VOLTRON', 'All counters:')
+		self.print('All counters:')
 		counters = self.get_all_counters()
 
 		for counter in counters:
-			self.buffer_print('VOLTRON', f"  {counter['counter_name']}: {counter['value']}")
+			self.print(f"  {counter['counter_name']}: {counter['value']}")
 
 	def _set_counter(self, input, command):
 		match = re.search(r'^([^ ]+) ([\d]+)$', input)
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		counter_name = match.group(1)
@@ -246,23 +246,23 @@ class BasicCommands(ModuleBase):
 
 		counter = self.get_counter(counter_name)
 		if not counter:
-			self.buffer_print('VOLTRON', f'Counter does not exsit: {counter_name}')
+			self.print(f'Counter does not exsit: {counter_name}')
 			return
 
 		self.set_counter(counter_name, value)
-		self.buffer_print('VOLTRON', f'Counter {counter_name} set to {value}')
+		self.print(f'Counter {counter_name} set to {value}')
 
 
 	def command_details(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 
 		if not match:
-			self.buffer_print('VOLTRON', f'Usage: {command.usage}')
+			self.print(f'Usage: {command.usage}')
 			return
 
 		command = match.group(1)
 		if not command in self._commands:
-			self.buffer_print('VOLTRON', f'Unknown command: !{command}')
+			self.print(f'Unknown command: !{command}')
 			return
 
 		twitch_id = self._commands[command].get('response_twitch_id', None)
@@ -272,12 +272,12 @@ class BasicCommands(ModuleBase):
 			if user:
 				twitch_user_name = user.display_name
 
-		self.buffer_print('VOLTRON', f'Details for command !{command}:')
-		self.buffer_print('VOLTRON', f'  Response Account: {twitch_user_name}')
-		self.buffer_print('VOLTRON',  '  Response:')
+		self.print(f'Details for command !{command}:')
+		self.print(f'  Response Account: {twitch_user_name}')
+		self.print('  Response:')
 
 		for line in self._commands[command]['response']:
-			self.buffer_print('VOLTRON', f'    {line}')
+			self.print(f'    {line}')
 
 	def _print_commands(self):
 		for command in sorted(self._commands):
@@ -285,7 +285,7 @@ class BasicCommands(ModuleBase):
 				command = command
 			)
 
-			self.buffer_print('VOLTRON', output_str)
+			self.print(output_str)
 
 	def shutdown(self):
 		self.save_module_data(self._commands)
