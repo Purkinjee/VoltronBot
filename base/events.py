@@ -52,6 +52,10 @@ class ChatCommandEvent(Event):
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
 		self.bypass_permissions = bypass_permissions
+		if kwargs:
+			self.kwargs = kwargs
+		else:
+			self.kwargs = {}
 
 		for key in kwargs:
 			setattr(self, key, kwargs[key])

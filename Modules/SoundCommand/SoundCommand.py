@@ -1,5 +1,5 @@
 from base.module import ModuleBase, ModuleAdminCommand
-from base.events import EVT_CHATMESSAGE, EVT_CHATCOMMAND
+from base.events import EVT_CHATCOMMAND
 
 import re
 import os

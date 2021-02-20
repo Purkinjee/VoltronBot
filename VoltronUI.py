@@ -124,13 +124,11 @@ class VoltronOutputLexer(RegexLexer):
 				token.Name.Decorator
 			)),
 
-			(r'^(\[.*\]\s)(\<VOLTRON\>)', bygroups(token.Name.Attribute, token.Name.Variable)),
-			(r'^(\[.*\]\s)(<INFO\>.*)$', bygroups(token.Name.Attribute, token.Name.Attribute)),
-			(r'^(\[.*\]\s)(<STATUS>.*)$', bygroups(token.Name.Attribute, token.Name.Label)),
-			(r'^(\[.*\]\s)(<ERR>.*)$', bygroups(token.Name.Attribute, token.Name.Exception)),
-			(r'^(\[.*\]\s)(\<.+\>)', bygroups(token.Name.Attribute, token.Name.Variable)),
-
-
+			(r'^(\[.+\]\s)(\<VOLTRON\>)', bygroups(token.Name.Attribute, token.Name.Variable)),
+			(r'^(\[.+\]\s)(<INFO\>.*)$', bygroups(token.Name.Attribute, token.Name.Attribute)),
+			(r'^(\[.+\]\s)(<STATUS>.*)$', bygroups(token.Name.Attribute, token.Name.Label)),
+			(r'^(\[.+\]\s)(<ERR>.*)$', bygroups(token.Name.Attribute, token.Name.Exception)),
+			(r'^(\[.+\]\s)(\<[^ ]+\>)', bygroups(token.Name.Attribute, token.Name.Variable)),
 		]
 	}
 
