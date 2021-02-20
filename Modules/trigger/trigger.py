@@ -107,7 +107,7 @@ class Trigger(ModuleBase):
 			trigger = match.group(1).lower()
 			response = match.group(2).strip()
 			if trigger in self._triggers['triggers']:
-				self.send_chat_message(f"@{event.display_name} The trigger !{command} already exists. You can delete it using !deletetrigger")
+				self.send_chat_message(f"@{event.display_name} The trigger {trigger} already exists. You can delete it using !deletetrigger")
 				return
 			else:
 				self._triggers['triggers'][trigger] = { 'response': [response] }
