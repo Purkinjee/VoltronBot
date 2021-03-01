@@ -46,9 +46,13 @@ class ChannelPointModule(ModuleBase):
 			command = self._channel_point_data['attachments'][event.reward_id]['message_command'][user_input]
 
 		if command:
+			command_args = command.split()
+			message = ' '.join(command_args[1:])
+			if not message:
+				message = user_input
 			command_event = ChatCommandEvent(
-				command,
-				event.user_input,
+				command_args[0],
+				message,
 				event.display_name,
 				event.user_id,
 				False,
@@ -95,12 +99,13 @@ class ChannelPointModule(ModuleBase):
 					if prompt == 'c':
 						self.update_status_text()
 						return True
-					match = re.search(r'^!([^ ]+)$', prompt)
+					match = re.search(r'^!([^ ]+ ?.*)$', prompt)
 					if not match:
 						self.print('Please type a valid command beginning with !')
 						return False
 
-					command = match.group(1)
+					command = match.group(1).strip()
+
 					reward_data = self._channel_point_data['attachments'].get(selected_reward[0], {})
 					if required_message is None:
 						reward_data['command'] = command

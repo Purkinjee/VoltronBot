@@ -47,15 +47,20 @@ class AliasModule(ModuleBase):
 			return
 
 		for seq in self._module_data['commands'][event.command]['sequence']:
+			command_args = seq['command'].split()
+			message = ' '.join(command_args[1:])
+			if not message:
+				message = event.message
 			command_event = ChatCommandEvent(
-				seq['command'],
-				event.message,
+				command_args[0],
+				message,
 				event.display_name,
 				event.user_id,
 				event.is_vip,
 				event.is_mod,
 				event.is_broadcaster,
 				bypass_permissions = True,
+				original_message = event.message,
 				**event.kwargs
 			)
 			if seq['delay'] == 0:
@@ -110,6 +115,7 @@ class AliasModule(ModuleBase):
 			count += 1
 		self.print(f"  {count}. END")
 
+		## Function for position in sequence
 		def command_selected(command_num):
 			if command_num.lower() == 'c':
 				self.update_status_text()
@@ -123,15 +129,17 @@ class AliasModule(ModuleBase):
 
 			sequence_index = command_num - 1
 
+			## Function for new command to be added
 			def sequence_command_selected(sequence_command):
 				if sequence_command.lower() == 'c':
 					self.update_status_text()
 					return True
-				match = re.search(r'^!([^ ]+)$', sequence_command.strip())
+				match = re.search(r'^!([^ ]+.*)$', sequence_command.strip())
 				if not match:
 					return False
 				sequence_command = match.group(1)
 
+				## Function for delay to be input
 				def delay_selected(delay):
 					if delay.lower() == 'c':
 						self.update_status_text()

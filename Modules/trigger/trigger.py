@@ -115,8 +115,6 @@ class Trigger(ModuleBase):
 			self.save_module_data(self._triggers)
 			self.send_chat_message(f'Trigger {trigger} successfully added!')
 
-
-
 	def _append_trigger(self, event):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")

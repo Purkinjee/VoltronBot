@@ -43,6 +43,13 @@ class CooldownModule(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
+			'notification_override',
+			self._notification_override,
+			usage = f'{self.module_name} notification_override <!command> <on/off/inherit>',
+			description = 'Enable or disable cooldown notification for a specific command'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
 			'delete',
 			self._delete_cooldown,
 			usage = f'{self.module_name} delete !<command>',
@@ -86,10 +93,13 @@ class CooldownModule(ModuleBase):
 
 		global_cd = self.default_cooldown
 		user_cd = 0
+		notify = self._cooldown_data.get('notifications', True)
 
 		if event.command in self._cooldown_data['commands']:
-			global_cd = self._cooldown_data['commands'][event.command]['global']
-			user_cd = self._cooldown_data['commands'][event.command]['user']
+			cd_data = self._cooldown_data['commands'][event.command]
+			global_cd = cd_data.get('global', global_cd)
+			user_cd = cd_data.get('user', user_cd)
+			notify = cd_data.get('notification', notify)
 
 		runtimes = self._cooldown_data['runtimes'].get(event.command, {})
 		user_runtime = runtimes.get('user', {}).get(event.user_id, 0)
@@ -99,7 +109,7 @@ class CooldownModule(ModuleBase):
 		global_diff = time.time() - global_runtime
 		if (user_diff < user_cd) or (global_diff < global_cd):
 			cd = int(max((user_cd - user_diff), (global_cd - global_diff)))
-			if self._cooldown_data.get('notifications', True):
+			if notify:
 				self.send_chat_message(f'@{{sender}}: Command !{event.command} is on cooldown. ({cd}s)', event=event)
 			return True
 
@@ -150,6 +160,35 @@ class CooldownModule(ModuleBase):
 
 		self.print(f'Cooldown notifications turned {input.strip().lower()}')
 
+	def _notification_override(self, input, command):
+		match = re.search(r'^!([^ ]+) (on|off|inherit)$', input)
+		if not match:
+			self.print(f'Usage: {command.usage}')
+			return
+
+		cd_command = match.group(1)
+		action = {
+			'on': True,
+			'off': False,
+			'inherit': None
+		}[match.group(2)]
+		self.print(cd_command)
+		self.print(action)
+
+		cd_data = self._cooldown_data['commands'].get(cd_command, {})
+		if 'notification' in cd_data and action is None:
+			del cd_data['notification']
+		else:
+			cd_data['notification'] = action
+
+		if not cd_data:
+			del self._cooldown_data['commands'][cd_command]
+		else:
+			self._cooldown_data['commands'][cd_command] = cd_data
+
+		self.save_module_data(self._cooldown_data)
+		self.print(f'Notification for !{cd_command} set to {match.group(2)}')
+
 	def _delete_cooldown(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
@@ -175,8 +214,17 @@ class CooldownModule(ModuleBase):
 		for command in self._cooldown_data['commands']:
 			command_data = self._cooldown_data['commands'][command]
 			self.print(f'!{command}:')
-			self.print(f"  Global: {command_data['global']}s")
-			self.print(f"  User: {command_data['user']}s")
+			if 'global' in command_data:
+				self.print(f"  Global: {command_data['global']}s")
+			if 'user' in command_data:
+				self.print(f"  User: {command_data['user']}s")
+			if command_data.get('notification'):
+				notification_str = {
+					True: 'On',
+					False: 'Off',
+					None: 'Inherit'
+				}[command_data['notification']]
+				self.print(f"  Notification Override: {notification_str}")
 
 	def remove_expired_cooldowns(self):
 		for command in self._cooldown_data['commands']:

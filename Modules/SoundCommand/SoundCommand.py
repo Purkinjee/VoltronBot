@@ -1,13 +1,14 @@
 from base.module import ModuleBase, ModuleAdminCommand
 from base.events import EVT_CHATCOMMAND
 
+import sounddevice
 import re
 import os
 import time
-import sounddevice
 
 class SoundCommand(ModuleBase):
 	module_name = "sound_command"
+
 	def setup(self):
 		self._commands = self.get_module_data()
 

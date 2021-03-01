@@ -1,8 +1,8 @@
 import re
 import os
-import sounddevice
 import time
 import humanize
+import sounddevice
 
 from base.module import ModuleBase, ModuleAdminCommand
 from lib.common import get_broadcaster
@@ -10,6 +10,7 @@ from base.events import EVT_FIRST_MESSAGE, EVT_CHATCOMMAND, EVT_STREAM_STATUS, C
 
 class Welcome(ModuleBase):
 	module_name = "welcome"
+
 	def setup(self):
 		if not os.path.isdir(self.media_directory):
 			os.makedirs(self.media_directory)

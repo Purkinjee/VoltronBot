@@ -33,9 +33,11 @@ class RaidHost(ModuleBase):
 
 		command_str = self._module_data['attachments'].get('raid')
 		if command_str is not None:
+			command_args = command_str.split()
+			message = ' '.join(command_args[1:])
 			command_event = ChatCommandEvent(
-				command_str,
-				"",
+				command_args[0],
+				message,
 				event.display_name,
 				event.user_id,
 				False,
@@ -52,9 +54,11 @@ class RaidHost(ModuleBase):
 
 		command_str = self._module_data['attachments'].get('host')
 		if command_str is not None:
+			command_args = command_str.split()
+			message = ' '.join(command_args[1:])
 			command_event = ChatCommandEvent(
-				command_str,
-				"",
+				command_args[0],
+				message,
 				event.display_name,
 				event.user_id,
 				False,
@@ -75,7 +79,7 @@ class RaidHost(ModuleBase):
 			self._module_data['attachments'][key] = None
 			self.print('Attachment removed')
 			return
-		match = re.search(r'^!([^ ]+)$', input)
+		match = re.search(r'^!([^ ]+.*)$', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			current = self._module_data['attachments'].get(key)
@@ -85,7 +89,7 @@ class RaidHost(ModuleBase):
 				self.print('Not currently set')
 			return
 
-		command = match.group(1).lower()
+		command = match.group(1)
 
 		self._module_data['attachments'][key] = command
 		self.save_module_data(self._module_data)

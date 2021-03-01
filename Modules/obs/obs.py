@@ -11,6 +11,37 @@ import time
 import threading
 from queue import Queue
 
+def obs_ws_connect(buffer_queue, host, port, password):
+	ws = WebSocket()
+	try:
+		ws.connect(f'ws://{host}:{port}')
+
+		ws.send(json.dumps({
+			"request-type": "GetAuthRequired",
+			"message-id": "1"
+		}))
+		res = json.loads(ws.recv())
+
+		if res['status'] != 'ok':
+			buffer_queue.put(('ERR', res['error']))
+			return None
+
+		if res.get('authRequired'):
+			sec = base64.b64encode(hashlib.sha256((password + res['salt']).encode('utf-8')).digest())
+			auth = base64.b64encode(hashlib.sha256(sec + res['challenge'].encode('utf-8')).digest()).decode('utf-8')
+			ws.send(json.dumps({"request-type": "Authenticate", "message-id": '2', "auth": auth}))
+
+			res = json.loads(ws.recv())
+			if res['status'] != 'ok':
+				self.buffer_queue.put(('ERR', res['error']))
+				return None
+
+		return ws
+
+	except socket.error as error:
+		buffer_queue.put(('ERR', error))
+		return None
+
 class OBSThread(threading.Thread):
 	def __init__(self, obs_queue, buffer_queue, host, port, password):
 		threading.Thread.__init__(self)
@@ -37,11 +68,7 @@ class OBSThread(threading.Thread):
 				self._keep_running = False
 				break
 
-			#if len(event) != 2:
-			#	continue
-
 			command = event
-			#ws = event[1]
 
 			if command.get('action') in ('timedsource', 'timedfilter', 'hidetimedsource', 'hidetimedfilter'):
 				self.render_cycle(command)
@@ -51,7 +78,10 @@ class OBSThread(threading.Thread):
 
 	def scene_change(self, command):
 		if 'source_scenes' in command:
-			source_scenes = command['source_scenes'].split()
+			if type(command['source_scenes']) == type(''):
+				source_scenes = command['source_scenes'].split()
+			else:
+				source_scenes = command['source_scenes']
 
 			req = {
 				'message-id': self.call_id,
@@ -75,7 +105,6 @@ class OBSThread(threading.Thread):
 		}
 
 		self.send_obs_command(req)
-
 
 	def render_cycle(self, command):
 		ident = ""
@@ -165,33 +194,9 @@ class OBSThread(threading.Thread):
 		if self._ws:
 			self._ws.close()
 
-		self._ws = WebSocket()
-		try:
-			self._ws.connect(f'ws://{self.host}:{self.port}')
-
-			self._ws.send(json.dumps({
-				"request-type": "GetAuthRequired",
-				"message-id": str(self.call_id)
-			}))
-			res = json.loads(self._ws.recv())
-
-			if res['status'] != 'ok':
-				self.buffer_queue.put(('ERR', res['error']))
-				self._ws = None
-				return
-
-			if res.get('authRequired'):
-				sec = base64.b64encode(hashlib.sha256((self.password + res['salt']).encode('utf-8')).digest())
-				auth = base64.b64encode(hashlib.sha256(sec + res['challenge'].encode('utf-8')).digest()).decode('utf-8')
-				self._ws.send(json.dumps({"request-type": "Authenticate", "message-id": str(self.call_id), "auth": auth}))
-
-				res = json.loads(self._ws.recv())
-				if res['status'] != 'ok':
-					self.buffer_queue.put(('ERR', res['error']))
-					self._ws = None
-					return
-		except socket.error as error:
-			self.buffer_queue.put(('ERR', error))
+		ws = obs_ws_connect(self.buffer_queue, self.host, self.port, self.password)
+		if ws is not None:
+			self._ws = ws
 
 	@property
 	def obs_ws(self):
@@ -257,29 +262,29 @@ class OBS(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'add_timed_source',
 			self._add_timed_source,
-			usage = f'{self.module_name} add_timed_source !<command> <scene> <source> <time>',
-			description = 'Adds a command to show <source> in <scene> for <time> seconds. Can use "current" for <scene>.',
+			usage = f'{self.module_name} add_timed_source !<command>',
+			description = 'Adds a command to show a source for a set period of time.',
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'hide_timed_source',
 			self._hide_timed_source,
-			usage = f'{self.module_name} hide_timed_source !<command> <scene> <source> <time>',
-			description = 'Adds a command to hide <source> in <scene> for <time> seconds. Can use "current" for <scene>.',
+			usage = f'{self.module_name} hide_timed_source !<command>',
+			description = 'Adds a command to hide a source for a set period of time.',
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'add_timed_filter',
 			self._add_timed_filter,
-			usage = f'{self.module_name} add_timed_filter !<command> <source> <filter> <time>',
-			description = 'Adds a command to show <filter> for <source> for <time> seconds.',
+			usage = f'{self.module_name} add_timed_filter !<command> <source>',
+			description = 'Adds a command to show a filter for <source> for a set period of time.',
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'hide_timed_filter',
 			self._hide_timed_filter,
-			usage = f'{self.module_name} hide_timed_filter !<command> <source> <filter> <time>',
-			description = 'Adds a command to hide <filter> for <source> for <time> seconds.',
+			usage = f'{self.module_name} hide_timed_filter !<command> <source>',
+			description = 'Adds a command to hide a filter for <source> for a set period of time.',
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -318,32 +323,51 @@ class OBS(ModuleBase):
 		self._hide_show_timed_source('hidetimedsource', input, command)
 
 	def _hide_show_timed_source(self, action, input, command):
-		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
+		match = re.search(r'^!([^ ]+)$', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return
 
-		command = match.group(1)
-		scene = match.group(2)
-		source = match.group(3)
-		seconds = int(match.group(4))
+		new_command = match.group(1)
 
-		if scene.lower() == 'current':
-			scene = None
+		## Callback when scene is selected
+		def scene_selected(scene):
+			## Callback when source is selected
+			def source_selected(source):
+				## Callback when user input time
+				def time_selected(prompt):
+					if prompt.lower() == 'c':
+						self.update_status_text()
+						return True
 
-		if command in self._obs_data['commands']:
-			self.print(f'Command already exists: !{command}')
-			return
+					if not prompt.isdigit():
+						return False
 
-		self._obs_data['commands'][command] = {
-			'action': action,
-			'scene': scene,
-			'source': source,
-			'time':  seconds
-		}
+					## Limit these to 5 minutes which should be more than enough
+					seconds = int(prompt)
+					if seconds > 300:
+						self.print('Max time is 300 seconds')
+						return False
 
-		self.save_module_data(self._obs_data)
-		self.print(f'Command !{command} successfully added')
+					self._obs_data['commands'][new_command] = {
+						'action': action,
+						'scene': scene,
+						'source': source,
+						'time':  seconds
+					}
+
+					self.save_module_data(self._obs_data)
+					self.print(f'Command !{new_command} successfully added')
+					self.update_status_text()
+					return True
+
+
+				self.update_status_text('For how many seconds? c to cancel')
+				self.prompt_ident = self.get_prompt('Time (s) > ', time_selected)
+
+			self.select_source(source_selected, scene=scene)
+
+		self.select_scene(scene_selected)
 
 	def _add_timed_filter(self, input, command):
 		self._add_hide_timed_filter('timedfilter', input, command)
@@ -352,32 +376,95 @@ class OBS(ModuleBase):
 		self._add_hide_timed_filter('hidetimedfilter', input, command)
 
 	def _add_hide_timed_filter(self, action, input, command):
-		match = re.search(r'^!([^ ]+) ([^ ]+) ([^ ]+) (\d+)$', input)
+		match = re.search(r'^!([^ ]+) (.+)$', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return
 
-		command = match.group(1)
-		source = match.group(2)
-		filter = match.group(3)
-		seconds = int(match.group(4))
+		new_command = match.group(1)
+		source = match.group(2).strip()
 
-		if command in self._obs_data['commands']:
-			self.print(f'Command already exists: !{command}')
-			return
+		def filter_selected(filter):
+			def time_selected(time):
+				if time.lower() == 'c':
+					self.update_status_text()
+					return True
 
-		self._obs_data['commands'][command] = {
-			'action': action,
-			'filter': filter,
-			'source': source,
-			'time':  seconds
-		}
+				if not time.isdigit():
+					return False
 
-		self.save_module_data(self._obs_data)
-		self.print(f'Command !{command} successfully added')
+				seconds = int(time)
+				if seconds > 300:
+					self.print('Max time is 300 seconds')
+					return False
 
+				self._obs_data['commands'][new_command] = {
+					'action': action,
+					'filter': filter,
+					'source': source,
+					'time':  seconds
+				}
+
+				self.save_module_data(self._obs_data)
+				self.update_status_text()
+				self.print(f'Command !{new_command} successfully added')
+				return True
+
+			self.update_status_text('For how many seconds? c to cancel.')
+			self.prompt_ident = self.get_prompt('Time (s) > ', time_selected)
+
+		self.select_source_filter(filter_selected, source)
 
 	def _add_scene_change(self, input, command):
+		match = re.search(r'^!([^ ]+)$', input)
+		if not match:
+			self.print(f'Usage: {command.usage}')
+			return
+
+		new_command = match.group(1)
+		if new_command in self._obs_data['commands']:
+			self.print(f'Command already exists: !{new_command}')
+			return
+
+		def scene_selected(scene_name):
+			if scene_name is None:
+				self.print('Must select target scene')
+				self.update_status_text()
+				return
+			def source_scenes_selected(source_scenes):
+				self.print(f'Target Scene: {scene_name}')
+				for s in source_scenes:
+					self.print(f'Source Scene: {s}')
+
+				self._obs_data['commands'][new_command] = {
+					'action': 'scenechange',
+					'scene': scene_name
+				}
+				if None in source_scenes:
+					source_scenes.remove(None)
+				if source_scenes:
+					self._obs_data['commands'][new_command]['source_scenes'] = source_scenes
+
+				self.save_module_data(self._obs_data)
+
+				self.print(f'Command !{new_command} added')
+				self.print(f'  Target Scene: {scene_name}')
+				if source_scenes:
+					self.print('  Source Scenes:')
+					for s in source_scenes:
+						self.print(f'    - {s}')
+
+				self.update_status_text()
+
+			self.select_scene(source_scenes_selected, multiple=True)
+			self.print("Select valid scenes to switch FROM")
+			self.print("Multiple can be selected. Separate numbers with spaces.")
+
+		self.select_scene(scene_selected)
+		self.print("Select scene to switch TO")
+
+
+	def _add_scene_change_old(self, input, command):
 		match = re.search(r'^!([^ ]+) ([^ ]+) ?(.+)?$', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
@@ -486,6 +573,151 @@ class OBS(ModuleBase):
 				continue
 
 			self.print(f"  {key}: {self._obs_data['commands'][command][key]}")
+
+	def select_source_filter(self, callback, source):
+		obs_ws = obs_ws_connect(self.voltron.buffer_queue, self.host, self.port, self.password)
+		req = {
+			'message-id': "15",
+			'request-type': 'GetSourceFilters',
+			'sourceName': source
+		}
+		filters = []
+		if self.send_obs_command(obs_ws, req):
+			res = json.loads(obs_ws.recv())
+			if res['status'] == 'error':
+				self.print(res['error'])
+				return None
+			if not res['filters']:
+				self.print(f'No filters exist for source "{source}"')
+				return None
+			self.print(f"Filters for {source}:")
+			for key in res['filters']:
+				filters.append(key['name'])
+				self.print(f"  {len(filters)}. {key['name']}")
+		else:
+			return None
+
+		def filter_selected(filter):
+			if filter.lower() == 'c':
+				self.update_status_text()
+				return True
+
+			if not filter.isdigit():
+				return False
+
+			filter = int(filter)
+			if filter < 1 or filter > len(filters):
+				return False
+
+			callback(filters[filter-1])
+			return True
+
+		self.update_status_text('Select a filter. c to cancel')
+		self.prompt_ident = self.get_prompt('Filter # > ', filter_selected)
+
+	def select_source(self, callback, scene=None):
+		obs_ws = obs_ws_connect(self.voltron.buffer_queue, self.host, self.port, self.password)
+		req = {
+			'message-id': "10",
+			'request-type': 'GetSceneItemList',
+			'sceneName': scene
+		}
+		count = 0
+		sources = []
+		if self.send_obs_command(obs_ws, req):
+			res = json.loads(obs_ws.recv())
+			scene_name = scene if scene is not None else 'current'
+			self.print(f'Sources for scene "{scene_name}"')
+			for key in res['sceneItems']:
+				sources.append(key['sourceName'])
+				count += 1
+				self.print(f"  {count}. {key['sourceName']}")
+		else:
+			return None
+
+		def scene_selected(source):
+			if source.lower() == 'c':
+				self.update_status_text()
+				return True
+
+			if not source.isdigit():
+				return False
+
+			source = int(source)
+			if source < 1 or source > count:
+				return False
+
+			callback(sources[source-1])
+			#self.update_status_text()
+			return True
+
+
+		self.update_status_text('Select a source. c to cancel')
+		self.prompt_ident = self.get_prompt('Source # > ', scene_selected)
+
+	def select_scene(self, callback, multiple=False):
+		obs_ws = obs_ws_connect(self.voltron.buffer_queue, self.host, self.port, self.password)
+		req = {
+			'message-id': "10",
+			'request-type': 'GetSceneList'
+		}
+		count = 1
+		scenes = []
+		if self.send_obs_command(obs_ws, req):
+			res = json.loads(obs_ws.recv())
+			self.print('Scenes:')
+			for key in res['scenes']:
+				scenes.append(key['name'])
+				self.print(f"  {count}. {key['name']}")
+				count += 1
+			scenes.append(None)
+			self.print(f"  {count}. None")
+		else:
+			return None
+
+		def scene_selected(scene):
+			if scene.lower() == 'c':
+				self.update_status_text()
+				return True
+
+			if multiple:
+				scene_input = scene.split()
+			else:
+				scene_input = [scene]
+
+			scene_names = []
+			for s in scene_input:
+				if not s.isdigit():
+					self.print(f'Invalid selection: {s}')
+					return False
+
+				s = int(s)
+				if s < 1 or s > count:
+					self.print(f'Invalid selection: {s}')
+					return False
+				scene_names.append(scenes[s-1])
+
+			if multiple:
+				callback(scene_names)
+			elif len(scene_names) == 1:
+				callback(scene_names[0])
+
+			return True
+
+		if multiple:
+			self.update_status_text('Select scenes separated by spaces. c to cancel.')
+		else:
+			self.update_status_text('Select a scene. c to cancel')
+		self.prompt_ident = self.get_prompt('Scene # > ', scene_selected)
+
+	def send_obs_command(self, ws, req):
+		try:
+			ws.send(json.dumps(req))
+			return True
+		except:
+			self.buffer_print('ERR', 'Error connecting to OBS.')
+			self.buffer_print('ERR', 'Check your settings and make sure OBS is running')
+			return False
 
 	def restart_obs_thread(self):
 		if self.obs_thread:

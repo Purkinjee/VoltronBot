@@ -52,9 +52,16 @@ class SubModule(ModuleBase):
 				command = tier_command
 
 			if command:
+				## First item in the command str is the command name
+				## followed by args. If there are no args pass the message
+				## from the event.
+				command_args = command.split()
+				message = ' '.join(command_args[1:])
+				if not message:
+					message = event.message
 				command_event = ChatCommandEvent(
-					command,
-					event.recipient_display_name,
+					command_args[0],
+					message,
 					event.display_name,
 					event.user_id,
 					False,
@@ -77,9 +84,16 @@ class SubModule(ModuleBase):
 			if tier_command is not None:
 				command = tier_command
 			if command:
+				## First item in the command str is the command name
+				## followed by args. If there are no args pass the message
+				## from the event.
+				command_args = command.split()
+				message = ' '.join(command_args[1:])
+				if not message:
+					message = event.message
 				command_event = ChatCommandEvent(
-					command,
-					event.message,
+					command_args[0],
+					message,
 					event.display_name,
 					event.user_id,
 					False,
@@ -90,13 +104,14 @@ class SubModule(ModuleBase):
 					sub_plan = event.sub_plan,
 					sub_plan_name = event.sub_plan_name,
 					cumulative_months = event.cumulative_months,
-					stream_months = event.streak_months
+					stream_months = event.streak_months,
+					sub_message = event.message
 				)
 				self.event_loop.event_queue.put(command_event)
 
 	def _attach_sub(self, input, command):
 		## !command or none followed by 1, 2, or 3
-		match = re.search(r'^(!([^ ]+)|none)((\s+([1-3])$)|$)', input)
+		match = re.search(r'^(!([^ ]+.*?)|none)((\s+([1-3])$)|$)', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return
@@ -126,7 +141,7 @@ class SubModule(ModuleBase):
 
 	def _attach_gift(self, input, command):
 		## !command or none followed by 1, 2, or 3
-		match = re.search(r'^(!([^ ]+)|none)((\s+([1-3])$)|$)', input)
+		match = re.search(r'^(!([^ ]+.*?)|none)((\s+([1-3])$)|$)', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return

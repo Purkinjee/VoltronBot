@@ -33,9 +33,13 @@ class BitsModule(ModuleBase):
 		if not command:
 			return
 
+		command_args = command.split()
+		message = ' '.join(command_args[1:])
+		if not message:
+			message = event.message
 		command_event = ChatCommandEvent(
-			command,
-			event.message,
+			command_args[0],
+			message,
 			event.display_name,
 			event.user_id,
 			False,
@@ -43,7 +47,8 @@ class BitsModule(ModuleBase):
 			False,
 			bypass_permissions = True,
 			bits_used = event.bits_used,
-			total_bits_used = event.total_bits_used
+			total_bits_used = event.total_bits_used,
+			cheer_message = event.message
 		)
 		self.event_loop.event_queue.put(command_event)
 
@@ -52,7 +57,7 @@ class BitsModule(ModuleBase):
 			self._module_data['attachments']['cheer'] = None
 			self.print('Attachment removed')
 			return
-		match = re.search(r'^!([^ ]+)$', input)
+		match = re.search(r'^!([^ ]+.*)$', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			current = self._module_data['attachments'].get('cheer')
@@ -62,7 +67,7 @@ class BitsModule(ModuleBase):
 				self.print('Not currently set')
 			return
 
-		command = match.group(1).lower()
+		command = match.group(1)
 
 		self._module_data['attachments']['cheer'] = command
 		self.save_module_data(self._module_data)

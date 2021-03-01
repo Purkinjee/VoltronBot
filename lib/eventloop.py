@@ -4,11 +4,12 @@ import sys
 import time
 from importlib import import_module
 from queue import Queue
+from math import sqrt
+
 import sounddevice
 import audio2numpy
 from audio2numpy.exceptions import AudioFormatError
 import numpy
-from math import sqrt
 
 from base.events import Event, TimerEvent, StreamStatusEvent, EVT_CHATCOMMAND
 from lib.common import get_db, get_broadcaster, get_module_directory

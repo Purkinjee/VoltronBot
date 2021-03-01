@@ -78,6 +78,9 @@ class VersionCheckThread(threading.Thread):
 				self.buffer_queue.put(('VOLTRON', f"An update for Voltron ({resp['current_version']}) is available!"))
 				self.buffer_queue.put(('VOLTRON', "Download the update using the following URL:"))
 				self.buffer_queue.put(('VOLTRON', resp['url']))
+				changelog = resp.get('changelog')
+				if changelog:
+					self.buffer_queue.put(('VOLTRON', f'Changelog: {changelog}'))
 			else:
 				self.buffer_queue.put(('VOLTRON', 'Voltron Bot is up to date!'))
 				changelog = resp.get('changelog')
@@ -90,7 +93,6 @@ class VersionCheckThread(threading.Thread):
 			self.buffer_queue.put(('ERR', 'Update Check Failed!'))
 
 		return True
-
 
 class VoltronBot:
 	"""
