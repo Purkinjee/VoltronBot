@@ -98,7 +98,7 @@ class ShoutOut(ModuleBase):
 
 	@property
 	def so_command(self):
-		return self._shoutout_data.get('command', 'check')
+		return self._shoutout_data.get('command', 'so')
 
 	def shutdown(self):
 		self.save_module_data(self._shoutout_data)

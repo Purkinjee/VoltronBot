@@ -72,10 +72,11 @@ class SubModule(ModuleBase):
 					sub_plan = event.sub_plan,
 					sub_plan_name = event.sub_plan_name,
 					cumulative_months = event.cumulative_months,
-					stream_months = event.streak_months,
+					streak_months = event.streak_months,
 					recipient_display_name = event.recipient_display_name,
 					recipient_id = event.recipient_id,
-					duration = event.duration
+					duration = event.duration,
+					sub_tier_name = event.sub_tier_name
 				)
 				self.event_loop.event_queue.put(command_event)
 		else:
@@ -104,8 +105,10 @@ class SubModule(ModuleBase):
 					sub_plan = event.sub_plan,
 					sub_plan_name = event.sub_plan_name,
 					cumulative_months = event.cumulative_months,
-					stream_months = event.streak_months,
-					sub_message = event.message
+					streak_months = event.streak_months,
+					sub_message = event.message,
+					sub_tier_name = event.sub_tier_name,
+					duration = 1
 				)
 				self.event_loop.event_queue.put(command_event)
 
