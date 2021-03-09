@@ -437,7 +437,11 @@ Control-C or type 'quit' to exit
 
 			else:
 				## Module specified but no trigger
-				help_str = f"Commands for {module} module:\n"
+				help_str = ""
+				if hasattr(self.modules[module], 'module_description'):
+					help_str += self.modules[module].module_description.strip()
+					help_str += '\n\n'
+				help_str += f"Commands for {module} module:\n"
 				count = 0
 				this_line = "    "
 				for trigger in self.modules[module].available_admin_commands():

@@ -39,11 +39,12 @@ class ChatCommandEvent(Event):
 			command = ''
 		self.command = command.lower().strip()
 
+		self.args = []
 		if message is not None:
 			self.message = str(message).strip()
-			self.args = self.message.split(' ')
+			if self.message:
+				self.args = self.message.split(' ')
 		else:
-			self.args = []
 			self.message = ''
 
 		self.display_name = display_name

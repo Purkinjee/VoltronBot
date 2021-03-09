@@ -34,7 +34,7 @@ class Trigger(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'trigger_account',
+			'account',
 			self._set_trigger_account,
 			usage = f'{self.module_name} trigger_account trigger',
 			description = 'Response account for triggers',
