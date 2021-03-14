@@ -21,6 +21,13 @@ class Rotator(ModuleBase):
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
+			'pause',
+			self.pause_message,
+			usage = f'{self.module_name} pause',
+			description = 'Pause or resume a specific rotator message',
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
 			'delete',
 			self.delete_message,
 			usage = f'{self.module_name} delete',
@@ -56,15 +63,55 @@ class Rotator(ModuleBase):
 		if not messages:
 			return
 
+		paused = self._rotator_data.get('paused', [])
+
 		elapsed = time.time() - self._last_time
 
 		if elapsed >= self.time_threshold and self._message_count >= self.message_threshold:
-			if len(messages) <= self._message_index:
-				self._message_index = 0
-			self.send_chat_message(messages[self._message_index])
+			message_index = self._next_index()
+			if message_index is None:
+				return
+			self.send_chat_message(messages[message_index])
 			self._message_count = 0
 			self._last_time = time.time()
+
+	def _are_all_paused(self):
+		messages = self._rotator_data.get('messages', [])
+		paused = self._rotator_data.get('paused', [])
+		all_paused = True
+
+		message_count = len(messages)
+		index = 0
+		while index < (message_count):
+			if not index in paused:
+				all_paused = False
+				break
+			index += 1
+
+		return all_paused
+
+	def _next_index(self):
+		messages = self._rotator_data.get('messages', [])
+		paused = self._rotator_data.get('paused', [])
+
+		if not messages:
+			return None
+
+		if self._are_all_paused():
+			return None
+
+		if len(messages) <= self._message_index:
+			self._message_index = 0
+
+		while self._message_index in paused:
 			self._message_index += 1
+			if len(messages) <= self._message_index:
+				self._message_index = 0
+
+		this_index = self._message_index
+		self._message_index += 1
+		return this_index
+
 
 	def chat_message(self, event):
 		self._message_count += 1
@@ -82,6 +129,42 @@ class Rotator(ModuleBase):
 
 		self.print(f"Rotator message added: {input}")
 
+	def pause_message(self, input, command):
+		message_list = self.list_messages()
+
+		def select_message(prompt):
+			if prompt.lower().strip() == 'c':
+				self.update_status_text()
+				return True
+
+			if not prompt.isdigit():
+				return False
+
+			selection = int(prompt)
+
+			if selection < 0 or selection > len(message_list):
+				self.print('Invalid selection')
+				return False
+
+			selection = selection - 1
+			selected_message = message_list[selection]
+
+			paused = self._rotator_data.get('paused', [])
+			if selection in paused:
+				self.print(f'Message Resumed: {selected_message}')
+				paused.remove(selection)
+			else:
+				self.print(f'Message Paused: {selected_message}')
+				paused.append(selection)
+
+			self._rotator_data['paused'] = paused
+			self.save_module_data(self._rotator_data)
+			self.update_status_text()
+			return True
+
+		self.update_status_text('Select message to pause/resume, c to cancel')
+		self.prompt_ident = self.get_prompt('Message Number> ', select_message)
+
 	def list_messages(self, input=None, command=None):
 		messages = self._rotator_data.get('messages', [])
 
@@ -89,10 +172,15 @@ class Rotator(ModuleBase):
 			self.print('No rotator messages set')
 			return
 
+		paused = self._rotator_data.get('paused', [])
+
 		self.print('Rotator messages:')
 		counter = 1
 		for message in messages:
-			self.print(f'  {counter}. {message}')
+			if (counter-1) in paused:
+				self.print(f'  {counter}. {message} [PAUSED]')
+			else:
+				self.print(f'  {counter}. {message}')
 			counter += 1
 
 		return messages

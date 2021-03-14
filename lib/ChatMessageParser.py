@@ -1,5 +1,7 @@
 import re
 import random
+import requests
+import Version
 from datetime import datetime, timezone, timedelta
 
 from lib.common import get_broadcaster, get_db
@@ -14,12 +16,19 @@ class ChatMessageParser:
 			'arg': self.argument,
 			'@': self.at,
 			'random': self.random,
+			'api': self.api,
 		}
 
 		self.chat_string = chat_string
 		self.event = event
 		self._twitch_api = None
 		self._broadcaster = None
+
+	def has_vars(self):
+		match = re.search(r'\{[^ ]+\}', self.chat_string)
+		if match:
+			return True
+		return False
 
 	def recursive_parse(self, chat_string):
 		all_vars = re.findall(r'\{([^ ]+)\}', chat_string)
@@ -83,11 +92,21 @@ class ChatMessageParser:
 		if not self.broadcaster:
 			return None
 
-		stream_info = self.twitch_api.get_stream(self.broadcaster.twitch_user_id)
+		user_id = None
+		if len(args) >= 1:
+			user_info = self.twitch_api.get_user(args[0])
+			if user_info:
+				user_id = user_info['id']
+		else:
+			user_id = self.broadcaster.twitch_user_id
+
+		if not user_id:
+			return None
+
+		stream_info = self.twitch_api.get_stream(user_id)
 
 		if not stream_info:
 			return "0 hours 0 minutes"
-			#return None
 
 		started_at = datetime.strptime(stream_info['started_at'], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone(timedelta(0)))
 		now = datetime.utcnow().replace(tzinfo=timezone(timedelta(0)))
@@ -161,6 +180,24 @@ class ChatMessageParser:
 		con.close()
 
 		return str(count)
+
+	def api(self, event, *args):
+		if not args:
+			return None
+
+		url = ':'.join(args)
+		try:
+			req = requests.get(
+				url,
+				headers = {
+					'x-voltronbot-channel': self.broadcaster.user_name,
+					'user-agent': f'VoltronBot/{Version.VERSION} (+https://voltron.purkinje.live/)'
+				}
+			)
+		except requests.exceptions.ConnectionError:
+			return ""
+
+		return req.text
 
 	@property
 	def twitch_api(self):

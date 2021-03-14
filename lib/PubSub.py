@@ -47,13 +47,13 @@ class PubSubThread:
 		self.run_task = self.bgloop.create_task(self.run())
 
 	async def run(self):
-		reconnecting = True
+		self.reconnecting = True
 
 		while True:
-			if reconnecting:
+			if self.reconnecting:
 				status = await self.connect()
 				if status:
-					reconnecting = False
+					self.reconnecting = False
 				else:
 					self.buffer_queue.put(('WARN', 'PubSub not responding. Attempting to reconnect.'))
 					await asyncio.sleep(10)
@@ -62,13 +62,16 @@ class PubSubThread:
 			#handler = asyncio.create_task(self._handle_response())
 			#await handler
 			await self._handle_response()
+			if self.reconnecting:
+				continue
+
 			time_elapsed_pong = time.time() - self.last_pong
 			time_elapsed_ping = time.time() - self.last_ping
 			if time_elapsed_pong > 150 and time_elapsed_ping > 100:
 				await self.ping()
 			elif time_elapsed_pong > 150 and time_elapsed_ping > 10:
 				self.buffer_queue.put(('WARN', 'PubSub not responding. Attempting to reconnect.'))
-				reconnecting = True
+				self.reconnecting = True
 				#self.reconnect()
 
 	async def _handle_response(self):
@@ -82,6 +85,11 @@ class PubSubThread:
 		if res:
 			if res['type'] == 'PONG':
 				self.pong_recv()
+				return
+
+			if res['type'] == 'RECONNECT':
+				self.reconnecting = True
+				self.buffer_queue.put(('WARN', 'RECONNECT received'))
 				return
 
 			topic = res['data']['topic']
@@ -117,9 +125,9 @@ class PubSubThread:
 		recipient_display_name = None
 
 		if message['is_gift']:
-			recipient_id = message['recipient_id']
-			recipient_user_name = message['recipient_user_name']
-			recipient_display_name = message['recipient_display_name']
+			recipient_id = message.get('recipient_id')
+			recipient_user_name = message.get('recipient_user_name')
+			recipient_display_name = message.get('recipient_display_name')
 
 		sub_message = ''
 		if 'sub_message' in message:
@@ -225,10 +233,10 @@ class PubSubThread:
 	async def ping(self):
 		await self.ws.send(json.dumps({"type": "PING"}))
 		self.last_ping = time.time()
-		#self.buffer_queue.put(('DEBUG', 'PubSub Ping send'))
+		self.buffer_queue.put(('DEBUG', 'PubSub Ping send'))
 
 	def pong_recv(self):
-		#self.buffer_queue.put(('DEBUG', 'PubSub Pong recv'))
+		self.buffer_queue.put(('DEBUG', 'PubSub Pong recv'))
 		self.last_pong = time.time()
 
 	def shutdown(self):

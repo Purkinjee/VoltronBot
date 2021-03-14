@@ -4,6 +4,8 @@ from lib.TwitchAPIHelper import TwitchAPIHelper
 from lib.common import get_broadcaster, get_module_data_directory
 from lib.ChatMessageParser import ChatMessageParser
 
+import threading
+
 class ModuleAdminCommand:
 	"""
 	Class used for creating admin commands for modules.
@@ -69,6 +71,15 @@ class ModuleBase:
 
 	def send_chat_message(self, message, twitch_id=None, event=None):
 		parser = ChatMessageParser(message, event)
+		if parser.has_vars():
+			thread = threading.Thread(target=self._thread_send_chat_message, args=(parser, twitch_id))
+			thread.start()
+		else:
+			self.voltron.send_chat_message(message, twitch_id)
+		#parsed = parser.parse()
+		#self.voltron.send_chat_message(parsed, twitch_id)
+
+	def _thread_send_chat_message(self, parser, twitch_id):
 		parsed = parser.parse()
 		self.voltron.send_chat_message(parsed, twitch_id)
 
