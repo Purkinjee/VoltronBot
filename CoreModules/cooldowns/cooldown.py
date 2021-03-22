@@ -3,6 +3,7 @@ from base.events import EVT_CHATCOMMAND
 
 import re
 import time
+import threading
 
 class CooldownModule(ModuleBase):
 	module_name = 'cooldown'
@@ -31,8 +32,8 @@ class CooldownModule(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'set',
 			self._set_cooldown,
-			usage = f'{self.module_name} set !<command> <global> <user>',
-			description = 'Set the global and user cooldowns for !<command> in seconds'
+			usage = f'{self.module_name} set !<command> <global> <user> <queue>',
+			description = 'Set the global and user cooldowns for !<command> in seconds. <queue> can be yes/no. Defaults to yes.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -59,6 +60,8 @@ class CooldownModule(ModuleBase):
 		self.event_listen(EVT_CHATCOMMAND, self.command)
 
 	def command(self, event):
+		if event.bypass_cooldowns:
+			return
 
 		if not event.command in self._cooldown_data['commands']:
 			return
@@ -72,6 +75,9 @@ class CooldownModule(ModuleBase):
 		self._cooldown_data['runtimes'][event.command] = runtimes
 
 	def update_runtimes(self, event):
+		if event.bypass_cooldowns:
+			return
+
 		runtimes = self._cooldown_data['runtimes'].get(event.command, {})
 		user_runtimes = runtimes.get('user', {})
 
@@ -83,6 +89,8 @@ class CooldownModule(ModuleBase):
 		self.save_module_data(self._cooldown_data)
 
 	def event_on_cooldown(self, event):
+		if event.bypass_cooldowns:
+			return False
 		if event.is_broadcaster:
 			return False
 		if not event.command in self._cooldown_data['runtimes']:
@@ -108,12 +116,35 @@ class CooldownModule(ModuleBase):
 		user_diff = time.time() - user_runtime
 		global_diff = time.time() - global_runtime
 		if (user_diff < user_cd) or (global_diff < global_cd):
-			cd = int(max((user_cd - user_diff), (global_cd - global_diff)))
-			if notify:
-				self.send_chat_message(f'@{{sender}}: Command !{event.command} is on cooldown. ({cd}s)', event=event)
-			return True
+			cd = max((user_cd - user_diff), (global_cd - global_diff))
+			self.print(cd)
+			to_queue = cd_data.get('queue', False)
+			if notify and not to_queue:
+				self.send_chat_message(f'@{{sender}}: Command !{event.command} is on cooldown. ({int(cd)}s)', event=event)
+			if to_queue:
+				runtimes = self._cooldown_data['runtimes'].get(event.command, {})
+				user_runtimes = runtimes.get('user', {})
+
+				runtimes['global'] = time.time() + cd
+				user_runtimes[event.user_id] = time.time() + cd
+				runtimes['user'] = user_runtimes
+				self._cooldown_data['runtimes'][event.command] = runtimes
+
+				self.save_module_data(self._cooldown_data)
+
+				thread = threading.Thread(target=self._queue_command, args=(event, cd))
+				thread.start()
+
+				return True
+			else:
+				return True
 
 		return False
+
+	def _queue_command(self, event, delay):
+		time.sleep(delay)
+		event.bypass_cooldowns = True
+		self.event_loop.event_queue.put(event)
 
 	def _set_default_cooldown(self, input, command):
 		if not input.isdigit():
@@ -127,7 +158,7 @@ class CooldownModule(ModuleBase):
 		self.print(f'Default cooldown set to {default_cd}s')
 
 	def _set_cooldown(self, input, command):
-		match = re.search(r'^!([^ ]+) (\d+) (\d+)$', input)
+		match = re.search(r'^!([^ ]+) (\d+) (\d+)( (yes|no))?$', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return
@@ -135,10 +166,13 @@ class CooldownModule(ModuleBase):
 		command = match.group(1)
 		global_cd = int(match.group(2))
 		user_cd = int(match.group(3))
+		queue = True if str(match.group(5)).lower() == 'yes' else False
+		queue_str = 'Yes' if queue else 'No'
 
 		cd_data = self._cooldown_data['commands'].get(command, {})
 		cd_data['global'] = global_cd
 		cd_data['user'] = user_cd
+		cd_data['queue'] = queue
 
 		self._cooldown_data['commands'][command] = cd_data
 
@@ -147,6 +181,7 @@ class CooldownModule(ModuleBase):
 		self.print(f'Cooldown set for !{command}')
 		self.print(f'  Global: {global_cd}s')
 		self.print(f'  User: {user_cd}s')
+		self.print(f'  Queue: {queue_str}')
 
 	def _set_notifications(self, input, command):
 		if not input.strip().lower() in ('on', 'off'):

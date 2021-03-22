@@ -33,6 +33,7 @@ class ChatCommandEvent(Event):
 		is_mod,
 		is_broadcaster,
 		bypass_permissions = False,
+		bypass_cooldowns = False,
 		**kwargs
 	):
 		if command is None:
@@ -53,6 +54,7 @@ class ChatCommandEvent(Event):
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
 		self.bypass_permissions = bypass_permissions
+		self.bypass_cooldowns = bypass_cooldowns
 		if kwargs:
 			self.kwargs = kwargs
 		else:

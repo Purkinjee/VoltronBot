@@ -21,24 +21,31 @@ class BasicCommands(ModuleBase):
 		}
 
 		self.register_admin_command(ModuleAdminCommand(
-			'addcommand',
+			'add',
 			self._add_command_admin,
-			usage = f'{self.module_name} addcommand !<command> <response>',
+			usage = f'{self.module_name} add !<command> <response>',
 			description = 'Add a basic command.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'appendcommand',
+			'append',
 			self._append_command_admin,
-			usage = f'{self.module_name} appendcommand !<command> <response>',
+			usage = f'{self.module_name} append !<command> <response>',
 			description = 'Append a response to an existing command'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
-			'deletecommand',
+			'delete',
 			self._delete_command_admin,
-			usage = f'{self.module_name} deletecommand !<command>',
+			usage = f'{self.module_name} delete !<command>',
 			description = 'Delete a command'
+		))
+
+		self.register_admin_command(ModuleAdminCommand(
+			'toggle',
+			self._toggle_command,
+			usage = f'{self.module_name} toggle !<command>',
+			description = 'Enable or disable !<command>'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -85,6 +92,8 @@ class BasicCommands(ModuleBase):
 			return False
 
 		elif event.command in self._commands:
+			if not self._commands[event.command].get('enabled', True):
+				return
 			twitch_id = self._commands[event.command].get('response_twitch_id', None)
 
 			for response in self._commands[event.command]['response']:
@@ -204,6 +213,23 @@ class BasicCommands(ModuleBase):
 		self.save_module_data(self._commands)
 		self.print(f'Command !{new_command} successfully deleted!')
 
+	def _toggle_command(self, input, command):
+		match = re.search(r'^!([^ ]+)$', input)
+		if not match:
+			self.print(f'Usage: {command.usage}')
+			return
+
+		toggle_command = match.group(1)
+		if not toggle_command in self._commands.keys():
+			self.print(f'Command !{toggle_command} not found')
+			return
+
+		enabled = not self._commands[toggle_command].get('enabled', True)
+		self._commands[toggle_command]['enabled'] = enabled
+		self.save_module_data(self._commands)
+
+		enabled_str = "Enabled" if enabled else "Disabled"
+		self.print(f"!{toggle_command} has been {enabled_str}")
 
 	def command_account(self, input, command):
 		match = re.search(r'^!([^ ]+)$', input)
@@ -281,9 +307,12 @@ class BasicCommands(ModuleBase):
 
 	def _print_commands(self):
 		for command in sorted(self._commands):
+			enabled = self._commands[command].get('enabled', True)
 			output_str = "  !{command}".format(
 				command = command
 			)
+			if not enabled:
+				output_str += " (disabled)"
 
 			self.print(output_str)
 
