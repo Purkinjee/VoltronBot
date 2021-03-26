@@ -76,8 +76,7 @@ class SubModule(ModuleBase):
 					recipient_display_name = event.recipient_display_name,
 					recipient_id = event.recipient_id,
 					duration = event.duration,
-					sub_tier_name = event.sub_tier_name,
-					sub_message = event.message
+					sub_tier_name = event.sub_tier_name
 				)
 				self.event_loop.event_queue.put(command_event)
 		else:
@@ -109,8 +108,7 @@ class SubModule(ModuleBase):
 					streak_months = event.streak_months,
 					sub_message = event.message,
 					sub_tier_name = event.sub_tier_name,
-					duration = 1,
-					sub_message = event.message
+					duration = 1
 				)
 				self.event_loop.event_queue.put(command_event)
 
