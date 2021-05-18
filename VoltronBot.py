@@ -136,7 +136,7 @@ class VoltronBot:
 
 		if self.pubsub_thread:
 			self.pubsub_thread.shutdown()
-		self.pubsub_thread = PubSubThread(self.buffer_queue, self.event_queue, broadcaster)
+
 
 		## If no broadcaster exists the bot is not functional
 		if not broadcaster:
@@ -144,6 +144,7 @@ class VoltronBot:
 			self.buffer_queue.put(('VOLTRON', "Please add one using 'account add'"))
 			self.buffer_queue.put(('VOLTRON', "Or select an existing account using 'account broadcaster'"))
 			return
+		self.pubsub_thread = PubSubThread(self.buffer_queue, self.event_queue, broadcaster)
 		for user in users:
 			if user.is_default:
 				self.default_account = user
