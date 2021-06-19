@@ -69,19 +69,19 @@ class ModuleBase:
 	def event_listen(self, event_type, callback, event_params=None):
 		self.event_loop.register_event(event_type, callback, event_params)
 
-	def send_chat_message(self, message, twitch_id=None, event=None):
+	def send_chat_message(self, message, twitch_id=None, event=None,reply_id=None):
 		parser = ChatMessageParser(message, event)
-		if parser.has_vars():
-			thread = threading.Thread(target=self._thread_send_chat_message, args=(parser, twitch_id))
+		if parser.has_vars(): 
+			thread = threading.Thread(target=self._thread_send_chat_message, args=(parser, twitch_id,reply_id))
 			thread.start()
 		else:
-			self.voltron.send_chat_message(message, twitch_id)
+			self.voltron.send_chat_message(message, twitch_id,reply_id)
 		#parsed = parser.parse()
 		#self.voltron.send_chat_message(parsed, twitch_id)
 
-	def _thread_send_chat_message(self, parser, twitch_id):
+	def _thread_send_chat_message(self, parser, twitch_id, reply_id=None):
 		parsed = parser.parse()
-		self.voltron.send_chat_message(parsed, twitch_id)
+		self.voltron.send_chat_message(parsed, twitch_id,reply_id)
 
 	def send_private_message(self, user_name, message, twitch_id=None, event=None):
 		self.voltron.send_private_message(user_name, message, twitch_id)

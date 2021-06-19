@@ -32,8 +32,10 @@ class ChatCommandEvent(Event):
 		is_vip,
 		is_mod,
 		is_broadcaster,
+  		msg_id,
 		bypass_permissions = False,
 		bypass_cooldowns = False,
+  
 		**kwargs
 	):
 		if command is None:
@@ -53,6 +55,7 @@ class ChatCommandEvent(Event):
 		self.is_vip = is_vip
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
+		self.msg_id = msg_id
 		self.bypass_permissions = bypass_permissions
 		self.bypass_cooldowns = bypass_cooldowns
 		if kwargs:
@@ -65,7 +68,7 @@ class ChatCommandEvent(Event):
 
 class ChatMessageEvent(Event):
 	type = EVT_CHATMESSAGE
-	def __init__(self, message, display_name, user_id, is_vip, is_mod, is_broadcaster):
+	def __init__(self, message, display_name, user_id, is_vip, is_mod, is_broadcaster,msg_id):
 		if message is not None:
 			self.message = str(message).strip()
 			self.args = self.message.split(' ')
@@ -78,7 +81,7 @@ class ChatMessageEvent(Event):
 		self.is_vip = is_vip
 		self.is_mod = is_mod
 		self.is_broadcaster = is_broadcaster
-
+		self.msg_id = msg_id
 class TimerEvent(Event):
 	type = EVT_TIMER
 

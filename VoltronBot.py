@@ -248,21 +248,21 @@ class VoltronBot:
 		con.commit()
 		con.close()
 
-	def send_chat_message(self, message, twitch_id=None):
+	def send_chat_message(self, message, twitch_id=None, reply_id=None):
 		"""
 		Send a message to IRC using the default account
 		Args:
 			message (string): Message to be sent
 		"""
 		if twitch_id and twitch_id in self.irc_map:
-			self.irc_map[twitch_id].send_message(message)
+			self.irc_map[twitch_id].send_message(message,reply_id=reply_id)
 		else:
 			if not self.default_account:
 				self.buffer_queue.put(("ERR", "No default account set."))
 				self.buffer_queue.put(("ERR", "Set one using 'account default'"))
-				self.irc_map[get_broadcaster().twitch_user_id].send_message(message)
+				self.irc_map[get_broadcaster().twitch_user_id].send_message(message,reply_id=reply_id)
 			else:
-				self.irc_map[self.default_account.twitch_user_id].send_message(message)
+				self.irc_map[self.default_account.twitch_user_id].send_message(message,reply_id=reply_id)
 
 	def send_private_message(self, user_name, message, twitch_id=None):
 		## Make this work when we have a pubsub thread
