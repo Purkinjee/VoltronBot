@@ -97,10 +97,13 @@ class BasicCommands(ModuleBase):
 			twitch_id = self._commands[event.command].get('response_twitch_id', None)
 
 			for response in self._commands[event.command]['response']:
-				if len(response) == 1:
-					response.append(False)
-				self.send_chat_message(response[0], twitch_id=twitch_id, event=event,reply=response[1])
-
+				if not type(response) is list:
+					self._commands[event.command]['response'].remove(response)
+					self._commands[event.command]['response'].append([response,False])
+					self.send_chat_message(response,twitch_id=twitch_id,event=event,reply=False)
+    			else:	
+					self.send_chat_message(response[0], twitch_id=twitch_id, event=event,reply=response[1])
+			
 			self.save_module_data(self._commands)
 
 			return True
