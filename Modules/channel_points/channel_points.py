@@ -58,7 +58,8 @@ class ChannelPointModule(ModuleBase):
 				False,
 				False,
 				False,
-				bypass_permissions = True
+				bypass_permissions = True,
+				msg_id= None
 			)
 			self.event_loop.event_queue.put(command_event)
 

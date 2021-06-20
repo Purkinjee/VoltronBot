@@ -68,6 +68,7 @@ class SubModule(ModuleBase):
 					False,
 					False,
 					bypass_permissions = True,
+					msg_id= None,
 					context = event.context,
 					sub_plan = event.sub_plan,
 					sub_plan_name = event.sub_plan_name,
@@ -77,6 +78,7 @@ class SubModule(ModuleBase):
 					recipient_id = event.recipient_id,
 					duration = event.duration,
 					sub_tier_name = event.sub_tier_name
+
 				)
 				self.event_loop.event_queue.put(command_event)
 		else:
@@ -108,7 +110,8 @@ class SubModule(ModuleBase):
 					streak_months = event.streak_months,
 					sub_message = event.message,
 					sub_tier_name = event.sub_tier_name,
-					duration = 1
+					duration = 1,
+					msg_id= None
 				)
 				self.event_loop.event_queue.put(command_event)
 

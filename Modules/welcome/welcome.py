@@ -178,7 +178,8 @@ class Welcome(ModuleBase):
 			event.is_mod,
 			event.is_broadcaster,
 			bypass_permissions = False,
-			run_by_command = False
+			run_by_command = False,
+			msg_id= None
 		)
 
 		self.event_loop.event_queue.put(command)
