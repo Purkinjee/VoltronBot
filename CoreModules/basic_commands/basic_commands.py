@@ -117,9 +117,10 @@ class BasicCommands(ModuleBase):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
-
-		match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', event.message)
-		
+		if '[reply=' in event.message:
+			match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', event.message)
+		else:
+			match = re.search(r'^!([^ ]+) (.*)', event.message)
 		if match:
 			command = match.group(1)
 			if len(match.groups()) == 2:
