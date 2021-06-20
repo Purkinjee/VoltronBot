@@ -54,16 +54,21 @@ class Trigger(ModuleBase):
 		for word in words:
 			if not word.lower() in self._triggers['triggers']:
 				continue
-			messages = self._triggers['triggers'][word.lower()].get('response', [])
-
+							
 			last_run = self._triggers['cooldowns'].get(word, 0)
 			if time.time() - last_run < self.internal_cd:
 				continue
 
 			response_twitch_id = self._triggers['triggers'][word.lower()].get('account')
 
-			for message in messages:
-				self.send_chat_message(message, event=event, twitch_id=response_twitch_id)
+			for response in self._triggers['triggers'][word.lower()]['response']:
+				if not type(response) is list:
+					self._triggers['triggers'][word.lower()]['response'].remove(response)
+					self._triggers['triggers'][word.lower()]['response'].append([response,False])
+					self.send_chat_message(response,event=event,twitch_id=response_twitch_id,reply=False)
+					self.save_module_data(self._triggers)
+				else:
+					self.send_chat_message(response[0], event=event, twitch_id=response_twitch_id,reply=response[1])
 
 			self._triggers['cooldowns'][word] = time.time()
 
@@ -101,16 +106,31 @@ class Trigger(ModuleBase):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
+		if "[reply=" in event.message.lower():
+			match = re.search(r'^\[(.*?)\] ([^ ]+) (.*)', event.message)
+		else:
+			match = re.search(r'^([^ ]+) (.*)', event.message)
+			
 
-		match = re.search(r'^([^ ]+) (.*)', event.message)
 		if match:
-			trigger = match.group(1).lower()
-			response = match.group(2).strip()
+			#trigger = match.group(1).lower()
+			if len(match.groups()) == 2:
+				trigger = match.group(1).lower()
+				response = match.group(2).strip()
+				reply = False
+			else:
+				response = match.group(3).strip()
+				trigger = match.group(2).lower()
+				if "true" in match.group(1).lower():
+					reply = True
+				else:
+					reply = False
+   			
 			if trigger in self._triggers['triggers']:
 				self.send_chat_message(f"@{event.display_name} The trigger {trigger} already exists. You can delete it using !deletetrigger")
 				return
 			else:
-				self._triggers['triggers'][trigger] = { 'response': [response] }
+				self._triggers['triggers'][trigger] = { 'response': [[response,reply]] }
 
 			self.save_module_data(self._triggers)
 			self.send_chat_message(f'Trigger {trigger} successfully added!')
@@ -119,17 +139,29 @@ class Trigger(ModuleBase):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
-
-		match = re.search(r'^([^ ]+) (.*)', event.message)
+		if "[reply=" in event.message.lower():
+			match = re.search(r'^\[(.*?)\] ([^ ]+) (.*)', event.message)
+		else:
+			match = re.search(r'^([^ ]+) (.*)', event.message)
+		
 		if match:
-			trigger = match.group(1).lower()
-			response = match.group(2).strip()
 
+			if len(match.groups()) == 2:
+				trigger = match.group(1).lower()
+				response = match.group(2).strip()
+				reply = False
+			else:
+				response = match.group(3).strip()
+				trigger = match.group(2).lower()
+				if "true" in match.group(1).lower():
+					reply = True
+				else:
+					reply = False
 			if not trigger in self._triggers['triggers']:
 				self.send_chat_message(f'Trigger {trigger} not found')
 				return
 
-			self._triggers['triggers'][trigger]['response'].append(response)
+			self._triggers['triggers'][trigger]['response'].append([response,reply])
 			self.save_module_data(self._triggers)
 			self.send_chat_message(f'Trigger {trigger} successfully modified')
 

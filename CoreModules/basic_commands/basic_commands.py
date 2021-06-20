@@ -101,7 +101,7 @@ class BasicCommands(ModuleBase):
 					self._commands[event.command]['response'].remove(response)
 					self._commands[event.command]['response'].append([response,False])
 					self.send_chat_message(response,twitch_id=twitch_id,event=event,reply=False)
-    			else:	
+				else:	
 					self.send_chat_message(response[0], twitch_id=twitch_id, event=event,reply=response[1])
 			
 			self.save_module_data(self._commands)
@@ -119,6 +119,7 @@ class BasicCommands(ModuleBase):
 			return
 		if '[reply=' in event.message:
 			match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', event.message)
+			self.print(match.groups())
 		else:
 			match = re.search(r'^!([^ ]+) (.*)', event.message)
 		if match:
@@ -128,7 +129,7 @@ class BasicCommands(ModuleBase):
 				reply = False
 			else:
 				response = match.group(3).strip()
-				if "true" in match.group(2).lower:
+				if "true" in match.group(2).lower():
 					reply = True
 				else:
 					reply = False
