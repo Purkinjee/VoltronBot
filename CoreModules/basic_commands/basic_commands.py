@@ -23,14 +23,14 @@ class BasicCommands(ModuleBase):
 		self.register_admin_command(ModuleAdminCommand(
 			'add',
 			self._add_command_admin,
-			usage = f'{self.module_name} add !<command> <response>',
+			usage = f'{self.module_name} add !<command> [reply=<True/False>] <response> ',
 			description = 'Add a basic command.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
 			'append',
 			self._append_command_admin,
-			usage = f'{self.module_name} append !<command> <response>',
+			usage = f'{self.module_name} append !<command> [reply=<True/False>] <response>',
 			description = 'Append a response to an existing command'
 		))
 
@@ -97,7 +97,9 @@ class BasicCommands(ModuleBase):
 			twitch_id = self._commands[event.command].get('response_twitch_id', None)
 
 			for response in self._commands[event.command]['response']:
-				self.send_chat_message(response, twitch_id=twitch_id, event=event)
+				if len(response) == 1:
+					response.append(False)
+				self.send_chat_message(response[0], twitch_id=twitch_id, event=event,reply=response[1])
 
 			self.save_module_data(self._commands)
 
@@ -113,34 +115,58 @@ class BasicCommands(ModuleBase):
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
 
-		match = re.search(r'^!([^ ]+) (.*)', event.message)
+		match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', event.message)
+		
 		if match:
 			command = match.group(1)
-			response = match.group(2).strip()
+			if len(match.groups()) == 2:
+				response = match.group(2).strip()
+				reply = False
+			else:
+				response = match.group(3).strip()
+				if "true" in match.group(2).lower:
+					reply = True
+				else:
+					reply = False
+					
 			if command in self._commands:
 				#self._commands[command]['response'] = [response]
 				self.send_chat_message(f"@{event.display_name} The command !{command} already exists. You can delete it using !deletecommand")
 				return
 			else:
-				self._commands[command] = { 'response': [response] }
-
+				self._commands[command] = { 'response': [[response,reply]] }
+			
 			self.save_module_data(self._commands)
 			self.send_chat_message(f'Command !{command} successfully added!')
 
 	def _add_command_admin(self, input, command):
-		match = re.search(r'^!([^ ]+) (.*)', input)
+		#match = re.search(r'^!([^ ]+) (.*)', input)
+ 
+		match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', input)
+		
+			
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return
 
 		new_command = match.group(1)
-		response = match.group(2).strip()
+		if len(match.groups()) == 2:
+			response = match.group(2).strip()
+			reply = False
+		else:
+			response = match.group(3).strip()
+			if "true" in match.group(2).lower():
+				reply = True
+			else:
+				reply = False
+   
 		if new_command in self._commands:
 			self.print(f'The command !{new_command} already exists')
 			return
 		else:
-			self._commands[new_command] = { 'response': [response] }
-
+			
+   			self._commands[new_command] = { 'response': [[response,reply]], }
+			
 		self.save_module_data(self._commands)
 		self.print(f'Command !{new_command} successfully added!')
 
@@ -148,34 +174,52 @@ class BasicCommands(ModuleBase):
 		if not event.is_mod:
 			self.send_chat_message(f"@{event.display_name} you are not a mod.")
 			return
+		match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', event.message)
 
-		match = re.search(r'^!([^ ]+) (.*)', event.message)
+
 		if match:
 			command = match.group(1)
-			response = match.group(2).strip()
-
 			if not command in self._commands:
 				self.send_chat_message(f'Command !{command} not found')
 				return
+   
+			if len(match.groups()) == 2:
+				response = match.group(2).strip()
+				reply = False
+			else:
+				response = match.group(3).strip()
+				if "true" in match.group(2).lower():
+					reply = True
+				else: 
+					reply = False
 
-			self._commands[command]['response'].append(response)
+			
+			self._commands[command]['response'].append([response,reply])
 			self.save_module_data(self._commands)
 			self.send_chat_message(f'Command !{command} successfully modified')
 
 	def _append_command_admin(self, input, command):
-		match = re.search(r'^!([^ ]+) (.*)', input)
+		match = re.search(r'^!([^ ]+) \[(.*?)\] (.*)', input)
 		if not match:
 			self.print(f'Usage: {command.usage}')
 			return
 
 		new_command = match.group(1)
-		response = match.group(2).strip()
+		if len(match.groups()) == 2:
+			response = match.group(2)
+			reply = False
+		else:
+			response = match.group(3)
+			if "true" in match.group(2):
+				reply = True
+			else:
+				reply = False
 
 		if not new_command in self._commands:
 			self.print(f'Command !{new_command} not found')
 			return
 
-		self._commands[new_command]['response'].append(response)
+		self._commands[new_command]['response'].append([response,reply])
 		self.save_module_data(self._commands)
 		self.print(f'Command !{new_command} successfully modified')
 
@@ -301,9 +345,10 @@ class BasicCommands(ModuleBase):
 		self.print(f'Details for command !{command}:')
 		self.print(f'  Response Account: {twitch_user_name}')
 		self.print('  Response:')
+		
 
 		for line in self._commands[command]['response']:
-			self.print(f'    {line}')
+			self.print(f'    {line[0]}')
 
 	def _print_commands(self):
 		for command in sorted(self._commands):
