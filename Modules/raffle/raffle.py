@@ -145,7 +145,7 @@ class RaffleModule(ModuleBase):
 				time_left = int(raffle['end_time'] - now)
 				enter_command = raffle.get('command', self.DEFAULT_RAFFLE_COMMAND)
 				self.send_chat_message(f'Raffle has {humanize.naturaldelta(time_left)} remaining. Type !{enter_command} to join!')
-				raffle['next_notif'] = raffle['raffle']['alert_interval'] + now
+				raffle['next_notif'] = raffle['raffle'].get('alert_interval', self.DEFAULT_RAFFLE_ALERT_INTERVAL) + now
 
 		for raffle in to_remove:
 			self._module_data['last_raffle'][raffle['name']] = raffle

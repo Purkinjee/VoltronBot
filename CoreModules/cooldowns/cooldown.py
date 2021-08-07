@@ -33,7 +33,7 @@ class CooldownModule(ModuleBase):
 			'set',
 			self._set_cooldown,
 			usage = f'{self.module_name} set !<command> <global> <user> <queue>',
-			description = 'Set the global and user cooldowns for !<command> in seconds. <queue> can be yes/no. Defaults to yes.'
+			description = 'Set the global and user cooldowns for !<command> in seconds. <queue> can be yes/no. Defaults to no.'
 		))
 
 		self.register_admin_command(ModuleAdminCommand(
@@ -102,12 +102,14 @@ class CooldownModule(ModuleBase):
 		global_cd = self.default_cooldown
 		user_cd = 0
 		notify = self._cooldown_data.get('notifications', True)
+		to_queue = False
 
 		if event.command in self._cooldown_data['commands']:
 			cd_data = self._cooldown_data['commands'][event.command]
 			global_cd = cd_data.get('global', global_cd)
 			user_cd = cd_data.get('user', user_cd)
 			notify = cd_data.get('notification', notify)
+			to_queue = cd_data.get('queue', False)
 
 		runtimes = self._cooldown_data['runtimes'].get(event.command, {})
 		user_runtime = runtimes.get('user', {}).get(event.user_id, 0)
@@ -118,7 +120,6 @@ class CooldownModule(ModuleBase):
 		if (user_diff < user_cd) or (global_diff < global_cd):
 			cd = max((user_cd - user_diff), (global_cd - global_diff))
 			self.print(cd)
-			to_queue = cd_data.get('queue', False)
 			if notify and not to_queue:
 				self.send_chat_message(f'@{{sender}}: Command !{event.command} is on cooldown. ({int(cd)}s)', event=event)
 			if to_queue:
