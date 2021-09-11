@@ -144,7 +144,11 @@ class Welcome(ModuleBase):
 		if not run_by_command:
 			broadcaster = get_broadcaster()
 			follow_str = "Not Following"
-			follow_time = broadcaster.twitch_api.get_follow_time(broadcaster.twitch_user_id, event.user_id)
+			try:
+				follow_time = broadcaster.twitch_api.get_follow_time(broadcaster.twitch_user_id, event.user_id)
+			except:
+				follow_time = None
+				follow_str = "Error retrieving follow time"
 			if follow_time is not None:
 				follow_str = f"Followed {humanize.naturaltime(follow_time)}"
 			self.print(f'First message: {event.display_name} ({follow_str})')
