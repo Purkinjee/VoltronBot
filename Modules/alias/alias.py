@@ -61,6 +61,7 @@ class AliasModule(ModuleBase):
 				event.is_broadcaster,
 				bypass_permissions = True,
 				original_message = event.message,
+				msg_id= None
 				**event.kwargs
 			)
 			if seq['delay'] == 0:

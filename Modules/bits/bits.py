@@ -48,7 +48,8 @@ class BitsModule(ModuleBase):
 			bypass_permissions = True,
 			bits_used = event.bits_used,
 			total_bits_used = event.total_bits_used,
-			cheer_message = event.message
+			cheer_message = event.message,
+			msg_id= None
 		)
 		self.event_loop.event_queue.put(command_event)
 

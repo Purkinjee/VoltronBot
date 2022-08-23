@@ -44,6 +44,7 @@ class RaidHost(ModuleBase):
 				False,
 				False,
 				bypass_permissions = True,
+				msg_id= None,
 				viewer_count = event.viewer_count
 			)
 			self.event_loop.event_queue.put(command_event)
@@ -64,7 +65,8 @@ class RaidHost(ModuleBase):
 				False,
 				False,
 				False,
-				bypass_permissions = True
+				bypass_permissions = True,
+				msg_id= None
 			)
 			self.event_loop.event_queue.put(command_event)
 
