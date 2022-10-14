@@ -55,6 +55,13 @@ class Rotator(ModuleBase):
 			description = 'Set how many chat messages must occur bettween events',
 		))
 
+		self.register_admin_command(ModuleAdminCommand(
+			'announce',
+			self.set_announce,
+			usage = f'{self.module_name} announce <on/off>',
+			description = 'If enabled will use /announce for rotator messages.',
+		))
+
 		self.event_listen(EVT_TIMER, self.timer)
 		self.event_listen(EVT_CHATMESSAGE, self.chat_message)
 
@@ -71,7 +78,11 @@ class Rotator(ModuleBase):
 			message_index = self._next_index()
 			if message_index is None:
 				return
-			self.send_chat_message(messages[message_index])
+
+			message = messages[message_index]
+			if self._rotator_data.get('announce', False):
+				message = f'/announce {message}'
+			self.send_chat_message(message)
 			self._message_count = 0
 			self._last_time = time.time()
 
@@ -250,6 +261,18 @@ class Rotator(ModuleBase):
 		self._rotator_data['message_threshold'] = new_threshold
 		self.save_module_data(self._rotator_data)
 		self.print(f'Message count set to {new_threshold}')
+
+	def set_announce(self, input, command):
+		input = input.lower().strip()
+
+		if input == 'on':
+			self._rotator_data['announce'] = True
+			self.print('Announce mode enabled')
+		elif input == 'off':
+			self._rotator_data['announce'] = False
+			self.print('Announce mode disabled')
+
+		self.save_module_data(self._rotator_data)
 
 	def shutdown(self):
 		self.save_module_data(self._rotator_data)
