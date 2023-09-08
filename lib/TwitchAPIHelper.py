@@ -178,14 +178,14 @@ class TwitchAPIHelper:
 	def get_follow_time(self, broadcaster_id, user_id):
 		try:
 			req = requests.get(
-				'https://api.twitch.tv/helix/users/follows',
+				'https://api.twitch.tv/helix/channels/followers',
 				headers = {
 					'client-id': self.__client_id,
 					'Authorization': 'Bearer {}'.format(self.oauth_tokens.token(self.__fernet_key))
 				},
 				params = {
-					'from_id' : user_id,
-					'to_id': broadcaster_id
+					'user_id' : user_id,
+					'broadcaster_id': broadcaster_id
 				}
 			)
 		except requests.exceptions.ConnectionError:

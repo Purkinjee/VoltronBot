@@ -1,4 +1,5 @@
 from base.module import ModuleBase
+import config
 
 from base.events import EVT_CHATMESSAGE, EVT_STREAM_STATUS, FirstMessageEvent
 
@@ -26,7 +27,7 @@ class EntranceEvents(ModuleBase):
 			}
 
 	def chat_message(self, event):
-		if self._users.get('stream_id', None):
+		if self._users.get('stream_id', None) or not config.PRODUCTION:
 			if not event.user_id in self._users['active']:
 				self._users['active'].append(event.user_id)
 				self.event_loop.event_queue.put(FirstMessageEvent(
