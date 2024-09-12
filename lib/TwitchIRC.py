@@ -57,7 +57,7 @@ class IRCBase:
 
 		#self._ts_print("Voltron bot is fully operational!")
 
-	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message):
+	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message,msg_id):
 		"""
 		Called whenever a PRIVMSG is received in twitch chat and successfully parsed
 
@@ -167,7 +167,7 @@ class IRCBase:
 					if not self.reconnecting:
 						self.reconnect()
 
-	def send_message(self, message, action=False):
+	def send_message(self, message, action=False,reply_id=None):
 		"""
 		Sends a message in chat
 
@@ -176,12 +176,14 @@ class IRCBase:
 			channel (string): The channel to send the message
 			action (bool): If True the message will be sent as an ACTION (/me)
 		"""
-
+		
 		## Format message appropaitely if we are sending as an ACTION
 		if action:
 			message = '\001ACTION {message} \001'.format(message=message)
-		self.irc.send(f"PRIVMSG #{self.broadcaster.user_name} :{message}\r\n".encode())
-
+		if not reply_id:
+			self.irc.send(f"PRIVMSG #{self.broadcaster.user_name} :{message}\r\n".encode())
+		else:
+			self.irc.send(f"@reply-parent-msg-id={reply_id} PRIVMSG #{self.broadcaster.user_name} :{message}\r\n".encode())
 	def _handle_response(self, resp):
 		## If Twitch pinged, respond with a pong and record a successful exchange
 		if re.search(r"^PING", resp):
@@ -207,7 +209,6 @@ class IRCBase:
 			user_info = match.group(2)
 			channel = match.group(3)
 			message = match.group(4)
-
 			broadcaster_id = self.channel_map[channel]
 
 			## Parse the display_name out of twitch_shit
@@ -224,6 +225,12 @@ class IRCBase:
 			)
 			user_id = id_match.group(1) if id_match else False
 
+			## Parse Message ID out of twitch_shit
+			msg_id_match =re.search(
+				r'id=([^; ]*)',
+				twitch_shit
+			)
+			msg_id = msg_id_match.group(1) if msg_id_match else None
 			## Determine if the sender was a mod
 			mod_match = re.search(
 				r'user-type=mod',
@@ -274,7 +281,8 @@ class IRCBase:
 				is_vip,
 				is_mod,
 				is_broadcaster,
-				m
+				m,
+				msg_id
 			)
 			#return True
 
@@ -464,7 +472,7 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 		event = RaidEvent(display_name, user_id, viewer_count)
 		self.event_queue.put(event)
 
-	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message):
+	def message_received(self, display_name, user_id, is_vip, is_mod, is_broadcaster, message,msg_id):
 		match = re.search(r'^!([^ ]+)(.*)', message)
 		if match:
 			command = match.group(1)
@@ -476,7 +484,8 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 				user_id,
 				is_vip,
 				is_mod,
-				is_broadcaster
+				is_broadcaster,
+    			msg_id
 			)
 			self.event_queue.put(event)
 		message_event = ChatMessageEvent(
@@ -485,7 +494,8 @@ class BroadcasterIRC(threading.Thread, IRCBase):
 			user_id,
 			is_vip,
 			is_mod,
-			is_broadcaster
+			is_broadcaster,
+			msg_id
 		)
 		self.event_queue.put(message_event)
 		#self._ts_print("{name}: {msg}".format(name=display_name, msg=message))
