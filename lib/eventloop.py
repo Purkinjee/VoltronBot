@@ -144,6 +144,7 @@ class EventLoop(threading.Thread):
 			'STREAM_STATUS': [],
 			'FIRST_MESSAGE': [],
 			'SUBSCRIPTION': [],
+			'GIFT_SUBSCRIPTION': [],
 			'BITS': [],
 			'POINT_REDEMPTION': [],
 			'HOST': [],

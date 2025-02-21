@@ -3,76 +3,68 @@ import websockets
 import json
 import time
 import asyncio
+import requests
 
 import config
-from base.events import SubscriptionEvent, BitsEvent, ChannelPointRedemption
+from base.events import SubscriptionEvent, GiftSubscriptionEvent, BitsEvent, ChannelPointRedemption
 from lib.common import get_broadcaster
 
 class PubSubThread:
+	eventsub_ws_uri = "wss://eventsub.wss.twitch.tv/ws"
+	#eventsub_ws_uri = "ws://127.0.0.1:8080/ws"
+
+	subscription_uri = "https://api.twitch.tv/helix/eventsub/subscriptions"
+	#subscription_uri = "http://127.0.0.1:8080/eventsub/subscriptions"
 	def __init__(self, buffer_queue, event_queue, broadcaster):
 		## PRODUCTION ##
-		########
-		## SET FERNET KEY HERE FOR PRODUCTION
-		########
+		######
+		## SET CLIENT_ID AND FERNET_KEY HERE FOR PRODUCTION
+		######
+		self.__client_id = ''
 		self.__fernet_key = ''
+
+		if hasattr(config, 'CLIENT_ID'):
+			self.__client_id = config.CLIENT_ID
+
 		if hasattr(config, 'FERNET_KEY'):
 			self.__fernet_key = config.FERNET_KEY
 
 		self.event_queue = event_queue
 		self.buffer_queue = buffer_queue
 		self.broadcaster = broadcaster
+		self.oauth_tokens = broadcaster.oauth_tokens
 
 		self.bgloop = asyncio.new_event_loop()
 		bg_thread = threading.Thread(target=self.bgloop.run_forever)
 		bg_thread.daemon = True
 		bg_thread.start()
 
-		self.last_ping = 0
-		self.last_pong = 0
-
-		self.event_names = {
-			"whispers": f"whispers.{broadcaster.twitch_user_id}",
-			"bits": f"channel-bits-events-v2.{broadcaster.twitch_user_id}",
-			"subs": f"channel-subscribe-events-v1.{broadcaster.twitch_user_id}",
-			"redemptions": f"channel-points-channel-v1.{broadcaster.twitch_user_id}"
-		}
-
 		self.ws = None
 
 	def start(self):
 		init_done = asyncio.run_coroutine_threadsafe(self.init_run(), self.bgloop)
-		#init_done.result()
 
 	async def init_run(self):
 		self.run_task = self.bgloop.create_task(self.run())
 
 	async def run(self):
 		self.reconnecting = True
+		self.reconnect_url = None
 
 		while True:
 			if self.reconnecting:
-				status = await self.connect()
+				status = await self.connect(self.reconnect_url)
 				if status:
 					self.reconnecting = False
+					self.reconnect_url = None
 				else:
 					self.buffer_queue.put(('WARN', 'PubSub not responding. Attempting to reconnect.'))
 					await asyncio.sleep(10)
 					continue
 
-			#handler = asyncio.create_task(self._handle_response())
-			#await handler
 			await self._handle_response()
 			if self.reconnecting:
 				continue
-
-			time_elapsed_pong = time.time() - self.last_pong
-			time_elapsed_ping = time.time() - self.last_ping
-			if time_elapsed_pong > 150 and time_elapsed_ping > 100:
-				await self.ping()
-			elif time_elapsed_pong > 150 and time_elapsed_ping > 10:
-				self.buffer_queue.put(('WARN', 'PubSub not responding. Attempting to reconnect.'))
-				self.reconnecting = True
-				#self.reconnect()
 
 	async def _handle_response(self):
 		res = False
@@ -83,161 +75,213 @@ class PubSubThread:
 			return
 
 		if res:
-			if res['type'] == 'PONG':
-				self.pong_recv()
-				return
-
-			if res['type'] == 'RECONNECT':
+			if res['metadata'].get('message_type', None) == "session_reconnect":
+				self.buffer_queue.put(('WARN', 'EventSub RECONNECT received'))
+				self.reconnect_url = res['payload'].get('session', {}).get('reconnect_url', None)
 				self.reconnecting = True
-				self.buffer_queue.put(('WARN', 'RECONNECT received'))
 				return
+			if res['metadata']['message_type'] != "notification":
+				return
+			topic = res['payload']['subscription']['type']
 
-			topic = res['data']['topic']
-			if topic == self.event_names['whispers']:
-				pass
-			elif topic == self.event_names['subs']:
+			if topic == "channel.subscribe":
 				try:
-					self.handle_sub(res['data'])
+					self.handle_sub(res['payload']['event'])
 				except Exception as e:
 					print(e)
-			elif topic == self.event_names['bits']:
+			elif topic == "channel.subscription.message":
 				try:
-					self.handle_bits(res['data'])
+					self.handle_resub(res['payload']['event'])
 				except Exception as e:
 					print(e)
-			elif topic == self.event_names['redemptions']:
+			elif topic == "channel.subscription.gift":
 				try:
-					self.handle_point_redemption(res['data'])
+					self.handle_gift_sub(res['payload']['event'])
+				except Exception as e:
+					print(e)
+			elif topic == "channel.cheer":
+				try:
+					self.handle_bits(res['payload']['event'])
+				except Exception as e:
+					print(e)
+			elif topic == 'channel.channel_points_custom_reward_redemption.add':
+				try:
+					self.handle_point_redemption(res['payload']['event'])
 				except Exception as e:
 					print(e)
 
 	def handle_sub(self, data):
-		message = None
-		m = data.get('message', None)
-		if m:
-			message = json.loads(m)
-
-		if not message:
-			return
-
-		recipient_id = None
-		recipient_user_name = None
-		recipient_display_name = None
-
-		if message['is_gift']:
-			recipient_id = message.get('recipient_id')
-			recipient_user_name = message.get('recipient_user_name')
-			recipient_display_name = message.get('recipient_display_name')
-
-		sub_message = ''
-		if 'sub_message' in message:
-			sub_message = message['sub_message'].get('message', '')
+		
+		context = "sub"
+		if data.get('is_gift', False):
+			context = 'subgift'
 
 		event = SubscriptionEvent(
-			message['context'],
-			message.get('user_id'),
-			message.get('user_name'),
-			message.get('display_name'),
-			recipient_id,
-			recipient_user_name,
-			recipient_display_name,
-			message['sub_plan'],
-			message['sub_plan_name'],
-			sub_message,
-			message.get('cumulative_months'),
-			message.get('streak_months'),
-			message['is_gift'],
-			message.get('multi_month_duration', 1)
+			context,
+			data.get('user_id'),
+			data.get('user_login'),
+			data.get('user_name'),
+			data['tier'],
+			'',
+			1,
+			1,
+			data.get('is_gift', False),
+			1
 		)
 
+		self.event_queue.put(event)
+	
+	def handle_resub(self, data):
+		event = SubscriptionEvent(
+			'resub',
+			data.get('user_id'),
+			data.get('user_login'),
+			data.get('user_name'),
+			data['tier'],
+			data['message']['text'],
+			data.get('cumulative_months', 1),
+			data.get('streak_months', 1),
+			False,
+			data.get('duration_months', 1)
+		)
+		self.event_queue.put(event)
+
+	def handle_gift_sub(self, data):
+		context = 'subgift'
+		if data.get('is_anonymous', False):
+			context = 'anonsubgift'
+		event = GiftSubscriptionEvent(
+			context,
+			data.get('user_id'),
+			data.get('user_login'),
+			data.get('user_name'),
+			data['tier'],
+			data.get('total', 1),
+			data.get('cumulative_total', 1),
+			data.get('is_anonymous', False)
+		)
 		self.event_queue.put(event)
 
 	def handle_bits(self, data):
-		message = None
-		m = data.get('message', None)
-		if m:
-			m = json.loads(m)
-			message = m['data']
-		if not message:
-			return
-
-		display_name = None
-		if not message['is_anonymous']:
-			broadcaster = get_broadcaster()
-			user_info = broadcaster.twitch_api.get_user(message['user_name'])
-			if user_info:
-				display_name = user_info['display_name']
-
 		event = BitsEvent(
-			message.get('user_id'),
-			message.get('user_name'),
-			display_name,
-			message['bits_used'],
-			message.get('chat_message', ''),
-			message['is_anonymous'],
-			message.get('total_bits_used', 0)
+			data.get('user_id'),
+			data.get('user_login'),
+			data.get('user_name'),
+			data['bits'],
+			data.get('message'),
+			data['is_anonymous'],
+			data['bits']
 		)
-
 		self.event_queue.put(event)
 
 	def handle_point_redemption(self, data):
-		message = None
-		m = data.get('message', None)
-		if m:
-			m = json.loads(m)
-			message = m['data']
-		if not m:
-			return
-
 		event = ChannelPointRedemption(
-			message['redemption']['user']['id'],
-			message['redemption']['user']['login'],
-			message['redemption']['user']['display_name'],
-			message['redemption']['reward']['id'],
-			message['redemption']['reward']['title'],
-			message['redemption']['reward'].get('prompt'),
-			message['redemption']['reward']['cost'],
-			message['redemption'].get('user_input')
+			data['user_id'],
+			data['user_login'],
+			data['user_name'],
+			data['reward']['id'],
+			data['reward']['title'],
+			data['reward'].get('prompt'),
+			data['reward']['cost'],
+			data.get('user_input')
 		)
-
 		self.event_queue.put(event)
 
-	async def connect(self):
-		self.buffer_queue.put(('STATUS', 'Connecting to PubSub'))
-		self.ws = await websockets.connect("wss://pubsub-edge.twitch.tv")
+	async def connect(self, reconnect_url = None):
+		url = self.eventsub_ws_uri
+		if reconnect_url is not None:
+			url = reconnect_url
 
-		request = {
-			"type": "LISTEN",
-			"nonce": "butt",
-			"data": {
-				"topics": [
-					#self.event_names['whispers'],
-					self.event_names['bits'],
-					self.event_names['subs'],
-					self.event_names['redemptions']
-				],
-				"auth_token": self.broadcaster.oauth_tokens.token(self.__fernet_key)
-			}
-		}
-		await self.ws.send(json.dumps(request))
-		recv_data = await self.ws.recv()
+		self.buffer_queue.put(('STATUS', f'Connecting to EventSub {url}'))
+
+		ws = await websockets.connect(url)
+
+		recv_data = await ws.recv()
 		res = json.loads(recv_data)
 
-		if res['error'] == '':
-			self.buffer_queue.put(('STATUS', 'Connected to PubSub!'))
+		session_id = res.get('payload', {}).get('session', {}).get('id')
+		self.buffer_queue.put(('DEBUG', f"EventSub Session ID: {session_id}"))
+
+		if session_id:
+			self.buffer_queue.put(('STATUS', 'Connected to EventSub!'))
+			if reconnect_url is None:
+				self.subscribe_to_events(session_id)
+			if self.ws is not None:
+				await self.ws.close()
+			self.ws = ws
 			return True
 		else:
-			self.buffer_queue.put(('ERR', res['error']))
+			self.buffer_queue.put(('ERR', "Error Connecting to EventSub"))
 			return False
+	
+	def subscribe_to_events(self, session_id):
+		events = {
+			"bits": {
+				"type": "channel.cheer",
+				"version": "1",
+				"condition": {"broadcaster_user_id": str(self.broadcaster.twitch_user_id)},
+				"transport": {
+					"method": "websocket",
+					"session_id": str(session_id)
+				}
+			},
+			"subscriptions": {
+				"type": "channel.subscribe",
+				"version": "1",
+				"condition": {"broadcaster_user_id": str(self.broadcaster.twitch_user_id)},
+				"transport": {
+					"method": "websocket",
+					"session_id": str(session_id)
+				}
+			},
+			"resubscribe": {
+				"type": "channel.subscription.message",
+				"version": "1",
+				"condition": {"broadcaster_user_id": str(self.broadcaster.twitch_user_id)},
+				"transport": {
+					"method": "websocket",
+					"session_id": str(session_id)
+				}
+			},
+			"gift-sub": {
+				"type": "channel.subscription.gift",
+				"version": "1",
+				"condition": {"broadcaster_user_id": str(self.broadcaster.twitch_user_id)},
+				"transport": {
+					"method": "websocket",
+					"session_id": str(session_id)
+				}
+			},
+			"channel-points": {
+				"type": "channel.channel_points_custom_reward_redemption.add",
+				"version": "1",
+				"condition": {"broadcaster_user_id": str(self.broadcaster.twitch_user_id)},
+				"transport": {
+					"method": "websocket",
+					"session_id": str(session_id)
+				}
+			}
+		}
+		for event_type in events:
+			self.buffer_queue.put(('DEBUG', f"Subscribing to {events[event_type]['type']} event"))
+			try:
+				req = requests.post(
+					self.subscription_uri,
+					headers = {
+						'Client-Id': self.__client_id,
+						'Authorization': 'Bearer {token}'.format(token=self.oauth_tokens.token(self.__fernet_key)),
+						'Content-Type': "application/json"
+					},
+					data = json.dumps(events[event_type]),
+				)
 
-	async def ping(self):
-		await self.ws.send(json.dumps({"type": "PING"}))
-		self.last_ping = time.time()
-		self.buffer_queue.put(('DEBUG', 'PubSub Ping send'))
+			except requests.exceptions.ConnectionError:
+				self.buffer_queue.put(("ERR", f"Error subscribing to {events[event_type]['type']} event"))
+				continue
 
-	def pong_recv(self):
-		self.buffer_queue.put(('DEBUG', 'PubSub Pong recv'))
-		self.last_pong = time.time()
+			if req.status_code == 202:
+				self.buffer_queue.put(("DEBUG", f"Successfully subscribed to {events[event_type]['type']} event"))
+
 
 	def shutdown(self):
 		self.bgloop.call_soon_threadsafe(self.run_task.cancel)

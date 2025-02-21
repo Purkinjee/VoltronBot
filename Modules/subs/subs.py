@@ -1,5 +1,6 @@
 from base.module import ModuleBase, ModuleAdminCommand
 from base.events import EVT_SUBSCRIPTION, ChatCommandEvent
+from base.events import EVT_GIFT_SUBSCRIPTION
 
 import re
 
@@ -32,13 +33,13 @@ class SubModule(ModuleBase):
 		))
 
 		self.event_listen(EVT_SUBSCRIPTION, self.subscription)
+		self.event_listen(EVT_GIFT_SUBSCRIPTION, self.gift_subscription)
 
 	def subscription(self, event):
 		message = None
-		if event.is_anonymous:
-			message = f"Anonymous sub ({event.sub_tier_name}) was gifted to {event.recipient_display_name}"
-		elif event.is_gift:
-			message = f"{event.display_name} gifted a {event.duration} month {event.sub_tier_name} sub to {event.recipient_display_name}"
+		if event.is_gift:
+			#message = f"{event.display_name} gifted a {event.duration} month {event.sub_tier_name} sub to {event.recipient_display_name}"
+			message = f"{event.display_name} received a {event.duration} month {event.sub_tier_name} gift sub"
 		else:
 			message = f"{event.display_name} just subscribed! ({event.sub_tier_name}, {event.cumulative_months} months)"
 
@@ -51,66 +52,67 @@ class SubModule(ModuleBase):
 			if tier_command is not None:
 				command = tier_command
 
-			if command:
-				## First item in the command str is the command name
-				## followed by args. If there are no args pass the message
-				## from the event.
-				command_args = command.split()
-				message = ' '.join(command_args[1:])
-				#if not message:
-				#	message = event.message
-				command_event = ChatCommandEvent(
-					command_args[0],
-					message,
-					event.display_name,
-					event.user_id,
-					False,
-					False,
-					False,
-					bypass_permissions = True,
-					context = event.context,
-					sub_plan = event.sub_plan,
-					sub_plan_name = event.sub_plan_name,
-					cumulative_months = event.cumulative_months,
-					streak_months = event.streak_months,
-					recipient_display_name = event.recipient_display_name,
-					recipient_id = event.recipient_id,
-					duration = event.duration,
-					sub_tier_name = event.sub_tier_name
-				)
-				self.event_loop.event_queue.put(command_event)
-		else:
-			command = self._module_data['attachments'].get('sub')
-			tier_command = self._module_data['attachments'].get(f'sub{event.sub_tier}')
-			if tier_command is not None:
-				command = tier_command
-			if command:
-				## First item in the command str is the command name
-				## followed by args. If there are no args pass the message
-				## from the event.
-				command_args = command.split()
-				message = ' '.join(command_args[1:])
-				#if not message:
-				#	message = event.message
-				command_event = ChatCommandEvent(
-					command_args[0],
-					message,
-					event.display_name,
-					event.user_id,
-					False,
-					False,
-					False,
-					bypass_permissions = True,
-					context = event.context,
-					sub_plan = event.sub_plan,
-					sub_plan_name = event.sub_plan_name,
-					cumulative_months = event.cumulative_months,
-					streak_months = event.streak_months,
-					sub_message = event.message,
-					sub_tier_name = event.sub_tier_name,
-					duration = 1
-				)
-				self.event_loop.event_queue.put(command_event)
+		command = self._module_data['attachments'].get('sub')
+		tier_command = self._module_data['attachments'].get(f'sub{event.sub_tier}')
+		if tier_command is not None:
+			command = tier_command
+		if command:
+			## First item in the command str is the command name
+			## followed by args. If there are no args pass the message
+			## from the event.
+			command_args = command.split()
+			message = ' '.join(command_args[1:])
+
+			command_event = ChatCommandEvent(
+				command_args[0],
+				message,
+				event.display_name,
+				event.user_id,
+				False,
+				False,
+				False,
+				bypass_permissions = True,
+				context = event.context,
+				sub_plan = event.sub_plan,
+				cumulative_months = event.cumulative_months,
+				streak_months = event.streak_months,
+				sub_message = event.message,
+				sub_tier_name = event.sub_tier_name,
+				duration = event.duration
+			)
+			self.event_loop.event_queue.put(command_event)
+
+	def gift_subscription(self, event):
+		display_name = event.display_name
+		if event.is_anon:
+			display_name = "Anonymous Gifter"
+		
+		self.print(f"{display_name} just gifted {event.gift_count} {event.sub_tier_name} subs!")
+
+		command = self._module_data['attachments'].get('gift')
+		tier_command = self._module_data['attachments'].get(f'gift{event.sub_tier}')
+		if tier_command is not None:
+			command = tier_command
+
+		if command:
+			command_args = command.split()
+			message = ' '.join(command_args[1:])
+			command_event = ChatCommandEvent(
+				command_args[0],
+				message,
+				event.display_name,
+				event.user_id,
+				False,
+				False,
+				False,
+				bypass_permissions = True,
+				context = event.context,
+				sub_plan = event.sub_plan,
+				gift_count = event.gift_count,
+				cumulative_total = event.cumulative_total,
+				is_anon = event.is_anon
+			)
+			self.event_loop.event_queue.put(command_event)
 
 	def _attach_sub(self, input, command):
 		## !command or none followed by 1, 2, or 3

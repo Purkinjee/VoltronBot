@@ -7,6 +7,7 @@ EVT_TIMER = 'TIMER'
 EVT_STREAM_STATUS = 'STREAM_STATUS'
 EVT_FIRST_MESSAGE = 'FIRST_MESSAGE'
 EVT_SUBSCRIPTION = 'SUBSCRIPTION'
+EVT_GIFT_SUBSCRIPTION = 'GIFT_SUBSCRIPTION'
 EVT_BITS = 'BITS'
 EVT_POINT_REDEMPTION = 'POINT_REDEMPTION'
 EVT_HOST = 'HOST'
@@ -124,8 +125,7 @@ class FirstMessageEvent(Event):
 
 class SubscriptionEvent(Event):
 	type = EVT_SUBSCRIPTION
-	def __init__(self, context, user_id, user_name, display_name, recipient_id,
-		recipient_user_name, recipient_display_name, sub_plan, sub_plan_name,
+	def __init__(self, context, user_id, user_name, display_name, sub_plan,
 		message, cumulative_months, streak_months, is_gift, duration):
 
 		self.context = context
@@ -133,14 +133,9 @@ class SubscriptionEvent(Event):
 		self.user_name = user_name
 		self.display_name = display_name
 
-		self.recipient_id = recipient_id
-		self.recipient_user_name = recipient_user_name
-		self.recipient_display_name = recipient_display_name
-
 		if sub_plan is None:
 			sub_plan = ''
 		self.sub_plan = sub_plan
-		self.sub_plan_name = sub_plan_name
 
 		self.message = message
 
@@ -150,9 +145,6 @@ class SubscriptionEvent(Event):
 		self.is_gift = is_gift
 		self.duration = duration
 
-	@property
-	def is_anonymous(self):
-		return self.context == 'anonsubgift'
 
 	@property
 	def sub_tier(self):
@@ -171,6 +163,37 @@ class SubscriptionEvent(Event):
 			'2000': 'Tier 2',
 			'3000': 'Tier 3'
 		}.get(str(self.sub_plan).lower(), 'Unknown')
+
+class GiftSubscriptionEvent(Event):
+	type = EVT_GIFT_SUBSCRIPTION
+	def __init__(self, context, user_id, user_name, display_name, sub_plan, gift_count, cumulative_total, is_anon):
+		self.context = context
+		self.user_id = user_id
+		self.user_name = user_name
+		self.display_name = display_name
+		self.sub_plan = sub_plan
+		self.gift_count = gift_count
+		self.cumulative_total = cumulative_total
+		self.is_anon = is_anon
+
+	@property
+	def sub_tier(self):
+		return {
+			'prime': 1,
+			'1000': 1,
+			'2000': 2,
+			'3000': 3
+		}.get(str(self.sub_plan).lower(), 'Unknown')
+	
+	@property
+	def sub_tier_name(self):
+		return {
+			'prime': 'Prime',
+			'1000': 'Tier 1',
+			'2000': 'Tier 2',
+			'3000': 'Tier 3'
+		}.get(str(self.sub_plan).lower(), 'Unknown')
+	
 
 class BitsEvent(Event):
 	type = EVT_BITS
