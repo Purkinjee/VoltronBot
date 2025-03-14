@@ -111,6 +111,9 @@ class PubSubThread:
 					print(e)
 
 	def handle_sub(self, data):
+		## Disable this for now as it's throwing events before the subscriber
+		## sends a sub message making it "public"
+		return True
 		
 		context = "sub"
 		if data.get('is_gift', False):
